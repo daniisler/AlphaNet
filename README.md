@@ -103,13 +103,13 @@ So if you work in AlphaNet directory, the dataset should be organized as:
 AlphaNet/
 ├── input.json
 └── dataset/
-    ├── my_dataset_1/ #This are your self-decided name, which should also written in your json file
+    ├── my_dataset_1/ #This is your self-decided name, which should also written in your json file
     │   ├── raw/
     │   └── processed/ # would appear after you first run training, when you need to change the dataset, you should remove it
-    ├── my_dataset_2/ #This are your self-decided name, which should also written in your json file
+    ├── my_dataset_2/ #This is your self-decided name, which should also written in your json file
     │   ├── raw/
     │   └── processed/
-    └── custom_dataset/#This are your self-decided name, which should also written in your json file
+    └── custom_dataset/#This is your self-decided name, which should also written in your json file
         ├── raw/
         └── processed/
 ```
@@ -224,6 +224,7 @@ We thank all contributors and the community for their support. Please open an is
 
 ## Citation
 [AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
+
 
 
 
