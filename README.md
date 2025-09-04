@@ -81,13 +81,9 @@ alpha-eval -c example.json -m /path/to/ckpt # use --help to see more functions
 ```bash 
 alpha-conv -i in.ckpt -o out.ckpt # use --help to see more functions
 ```
-4. Freeze a model:
-```bash 
-alpha-freeze -c in.config -m in.ckpt -o out.pt # use --help to see more functions
-```
 The functions above can also be used in a script way like previous version, see `old_README`.
 
-
+### Make dataset
 To prepare the training dataset in format of pickle, you can use:
 
 1. from deepmd:
@@ -102,6 +98,21 @@ python scripts/dp2pic_batch.py
 python scripts/xyz2pic.py
 ```
 
+So if you work in AlphaNet directory, the dataset should be organized as:
+```
+AlphaNet/
+├── input.json
+└── dataset/
+    ├── my_dataset_1/ #This are your self-decided name, which should also written in your json file
+    │   ├── raw/
+    │   └── processed/ # would appear after you first run training, when you need to change the dataset, you should remove it
+    ├── my_dataset_2/ #This are your self-decided name, which should also written in your json file
+    │   ├── raw/
+    │   └── processed/
+    └── custom_dataset/#This are your self-decided name, which should also written in your json file
+        ├── raw/
+        └── processed/
+```
 There is also an ase calculator, you can use jax in this:
 
 ```python 
@@ -213,5 +224,6 @@ We thank all contributors and the community for their support. Please open an is
 
 ## Citation
 [AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
+
 
 
