@@ -1,6 +1,8 @@
-# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul 28 15:54:29 2025
 
-
+@author: Bangchen Yin
+"""
 import jax
 import jax.numpy as jnp
 from jax import random, lax, vmap
@@ -548,3 +550,4 @@ class AlphaNet_haiku(hk.Module):
         s = jnp.sum(s)+V_graph#jax.ops.segment_sum(s, batch, num_segments=1)+ Vgraph
         return s[0]
         
+
