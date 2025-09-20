@@ -67,7 +67,11 @@ The settings are put into a config file, you can see the json files provided as 
 
 In this version, you can set **"zbl" in the "model" field to true to enable ZBL potential**.
 
-Our code is based on pytorch-lightning, and in this version we provide command line interaction, which makes AlphaNet easier to use. However if you are already familar with python and torch, which is not that hard, it would be great to use the model in a torch way and do further exploration. In all there are 4 commands:
+Our code is based on pytorch-lightning, and in this version we provide command line interaction, which makes AlphaNet easier to use. However if you are already familar with python and torch, which is not that hard, it would be great to use the model in a torch way and do further exploration. 
+
+If you train AlphaNet in your own code， it is important to turn on the **gradient clipping**.
+
+In all there are 4 commands:
 1. Train a model:
 
 ```bash 
@@ -224,6 +228,7 @@ We thank all contributors and the community for their support. Please open an is
 
 ## Citation
 [AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
+
 
 
 
