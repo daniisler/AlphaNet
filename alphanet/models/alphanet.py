@@ -643,7 +643,7 @@ class AlphaNet(nn.Module):
             raise ValueError(f"Unexpected shape of s: {s.shape}")
        
         s = scatter(s, batch, dim=0, reduce=self.readout)+ V_graph
-        print(V_graph)
+
         if self.use_sigmoid:
             s = torch.sigmoid((s - 0.5) * 5)
         #return s, None, None
