@@ -470,19 +470,9 @@ def _process_positions_and_edges(
         edge_index, cell_offsets, neighbors = radius_graph_pbc(
             pos, natoms, cell, cutoff, max_num_neighbors_threshold=50, precision=precision
         )
-        ghost_pos = torch.zeros((100 * num_graphs, 3), dtype=precision, device=pos.device)
-        ghost_z = torch.zeros(100 * num_graphs, dtype=torch.long, device=z.device)
-        
-        # 扩展natoms（每个图增加100个原子）
-        new_natoms = natoms + 100
-        
-        # 创建ghost atom的batch索引
-        ghost_batch = torch.zeros(100, device = z.device, dtype=torch.long)
-        
-        # 合并原始数据和ghost atom
-        new_pos = torch.cat([pos, ghost_pos], dim=0)
-        new_z = torch.cat([z, ghost_z], dim=0)
-        new_batch = torch.cat([batch, ghost_batch], dim=0)
+        new_pos = pos
+        new_z = z
+        new_batch = batch
         out = get_pbc_distances(
             new_pos,
             edge_index,
@@ -498,15 +488,13 @@ def _process_positions_and_edges(
     else:
         raise ValueError("None PBC is not supporting yet, as radius graph is not compilable with jit")
     
-    # === 添加100个ghost atom ===
-   
     
     return GraphData(
         pos=new_pos,
         z=new_z,
         natoms=new_natoms,
         batch=new_batch,
-        edge_index=edge_index,  # 保持不变（ghost atom不添加新边）
+        edge_index=edge_index, 
         edge_attr=dist,
         edge_vec=vecs,
         cell=cell,
