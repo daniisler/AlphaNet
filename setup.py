@@ -10,7 +10,8 @@ setup(
         'ase',
         'rdkit',
         'pydantic',
-        'scikit-learn'
+        'scikit-learn',
+        'pydantic_settings'
         
     ],
     entry_points={
