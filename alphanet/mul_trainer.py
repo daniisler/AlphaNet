@@ -79,7 +79,7 @@ class Trainer(pl.LightningModule):
        e_loss, f_loss, s_loss = 0.0, 0.0, 0.0
        
        energy = model_outputs[0]
-       e_loss = self.energy_loss(energy.squeeze(), batch_data.y)
+       e_loss = self.energy_loss(energy, batch_data.y)
        if self.config.compute_forces:
            forces = model_outputs[1]
            
@@ -115,7 +115,7 @@ class Trainer(pl.LightningModule):
         e_loss, f_loss, s_loss = 0.0, 0.0, 0.0
         
         energy = model_outputs[0]
-        e_loss = self.energy_loss(energy.squeeze(), batch_data.y)
+        e_loss = self.energy_loss(energy, batch_data.y)
         if self.config.compute_forces:
             forces = model_outputs[1]
             f_loss = self.force_loss(forces, batch_data.force)
@@ -149,7 +149,7 @@ class Trainer(pl.LightningModule):
         e_loss, f_loss, s_loss = 0.0, 0.0, 0.0
         
         energy = model_outputs[0]
-        e_loss = self.energy_loss(energy.squeeze(), batch_data.y)
+        e_loss = self.energy_loss(energy, batch_data.y)
         if self.config.compute_forces:
             forces = model_outputs[1]
             f_loss = self.force_loss(forces, batch_data.force)
