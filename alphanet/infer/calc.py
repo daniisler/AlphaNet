@@ -13,7 +13,9 @@ class AlphaNetCalculator(Calculator):
     implemented_properties = ['energy', 'free_energy', 'forces', 'stress']
 
     def __init__(self, ckpt_path, config, device='cpu', precision='32', **kwargs):
-        Calculator.__init__(self, **kwargs)
+        self.precision = torch.float32 if precision == "32" else torch.float64
+        if precision == "64":
+            config.dtype = '64'
         if ckpt_path.endswith('ckpt'):
           self.model = AlphaNetWrapper(config).to(torch.device(device))
           self.model.load_state_dict(torch.load(ckpt_path), strict = False)        
@@ -21,11 +23,10 @@ class AlphaNetCalculator(Calculator):
            self.model = torch.load(ckpt_path,map_location=torch.device(device))
         else:
           raise ValueError("Unknown checkpoint format") 
-        
-        self.device = torch.device(device)
-        self.precision = torch.float32 if precision == "32" else torch.float64
         if precision == "64":
-         self.model.double()
+            self.model.double()
+        self.device = torch.device(device)
+        
         self.model.to(self.device)
         self.config = config
 
