@@ -7,7 +7,7 @@ import haiku as hk
 import pickle
 import numpy as np
 from alphanet.models.graph_jax import process_positions_and_edges
-from alphanet.models.alpha_haiku import AlphaNet_haiku
+from alphanet.models.alpha_haiku import AlphaNet_hiku
 import time
 from matscipy.neighbours import neighbour_list
 from functools import partial
@@ -22,7 +22,7 @@ class AlphaNetCalculator(Calculator):
         self.rng = jax.random.PRNGKey(0)
 
         def forward_fn(graph_data):
-            model = AlphaNet_haiku(config)
+            model = AlphaNet_hiku(config)
             return model(graph_data)
 
         self.transform = hk.transform(forward_fn)
@@ -64,11 +64,8 @@ class AlphaNetCalculator(Calculator):
         natoms = jnp.array([len(z)], dtype=jnp.int32)
         batch = jnp.zeros_like(z)
         
-        if atoms.pbc.any():
-            cell = jnp.asarray(atoms.get_cell(complete=True)[:], dtype=self.precision)
-        else:
-            cell = jnp.eye(3, dtype=self.precision)
-
+        cell = jnp.asarray(atoms.get_cell(complete=True)[:], dtype=self.precision)
+       
         index_i, index_j, shift = neighbour_list(
             quantities="ijS", 
             atoms=atoms, 
@@ -103,7 +100,15 @@ class AlphaNetCalculator(Calculator):
     def calculate(self, atoms=None, properties=None, system_changes=[]):
         Calculator.calculate(self, atoms, properties, system_changes)
         properties = properties or ['energy']
-
+        if not self.atoms.pbc.any():
+            print("Non-periodic system detected. Automatically adding a large vacuum box for calculation.")
+           
+            # Add 20 Å of vacuum padding around the molecule
+            padding = 20.0
+            new_cell_dims = atoms.get_positions().ptp(axis=0) + padding
+            atoms.set_cell(np.diag(new_cell_dims))
+            atoms.center()
+            atoms.pbc = True # Treat it as periodic now
         config_hash = self._get_config_hash(atoms)
         if config_hash != self._last_hash:
             grad_fn, edge_index = self._compile_energy_and_grad_fn(atoms)

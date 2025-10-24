@@ -309,7 +309,7 @@ class AlphaNet_flax(nn.Module):
     
     def setup(self):
  
-        if config.dtype == "64":
+        if self.config.dtype == "64": # <--- 修正
             self.dtype = jnp.float64
         else:
             self.dtype = jnp.float32
@@ -386,7 +386,7 @@ class AlphaNet_flax(nn.Module):
             nn.initializers.ones,
             (108,)
         ) * self.config.b
-        self.zbl = config.zbl
+        self.zbl = self.config.zbl # <--- 修正
         if self.zbl:
             
             fzbl_w_init = jnp.array([0.187, 0.3769, 0.189, 0.081, 0.003, 0.037, 0.0546, 0.0715], dtype=self.dtype)
@@ -401,8 +401,7 @@ class AlphaNet_flax(nn.Module):
             self.fzbl_A0 = jnp.array(0.529177210903, dtype=self.dtype)
         self.inv_sqrt_2 = 1 / math.sqrt(2.0)
         self.pi = jnp.pi
-    
-    def __call__(self, data, num_segments,prefix='infer'):
+    def __call__(self, data,prefix='infer'):
 
         pos = data.pos
         batch = data.batch
@@ -554,9 +553,10 @@ class AlphaNet_flax(nn.Module):
         #assert jnp.all(batch >= 0)
        # num_segments = jnp.max(data.batch) + 1
         s_out = jax.ops.segment_sum(s, batch, num_segments=1)
+       # if self.zbl:
+        #    s_out[0] = s_out[0] + V_graph[0]
        
-       
-        return s_out[0] + V_graph[0]
+        return s_out[0] #+ V_graph[0]
         if self.config.compute_forces and self.config.compute_stress:
             
             if data.displacement is not None:

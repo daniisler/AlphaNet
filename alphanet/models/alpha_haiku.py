@@ -281,7 +281,7 @@ class FTE(hk.Module):
         
         return dx, dvec
 
-class AlphaNet_haiku(hk.Module):
+class AlphaNet_hiku(hk.Module):
     def __init__(self, config, name=None):
         super().__init__(name=name)
         self.config = config
@@ -548,6 +548,6 @@ class AlphaNet_haiku(hk.Module):
             s = s[:, None]
         
         s = jnp.sum(s)+V_graph#jax.ops.segment_sum(s, batch, num_segments=1)+ Vgraph
-        return s[0]
+        return jnp.squeeze(s)
         
 

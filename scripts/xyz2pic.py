@@ -16,23 +16,23 @@ def convert_xyz_to_custom(xyz_file, output_path, chunk_size=100000):
     E, F, R, Z, C, N, S = [], [], [], [], [], [], []
 
     # Create the output directory structure
-    output_dir = os.path.join("../dataset", os.path.basename(output_path))
+    output_dir = os.path.join("./dataset", os.path.basename(output_path))
     raw_dir = os.path.join(output_dir, "raw")
     os.makedirs(raw_dir, exist_ok=True)
 
     # Process data with progress bar
     for i, atoms_obj in enumerate(tqdm(atoms, total=total_frames, desc="Processing frames")):
-        #print(atoms_obj.info)
-        if 'virial' not in atoms_obj.info.keys():
-            print(1)
-            continue
+        #print(atoms_obj.info.keys())
+        #if 'stress' not in atoms_obj.info.keys():
+         #   print(1)
+          #  continue
         E.append(atoms_obj.get_potential_energy())
-        F.append(atoms_obj.arrays['force'].tolist())
+        F.append(atoms_obj.get_forces().tolist())
         R.append(atoms_obj.get_positions().tolist())
         Z.append([atom.number for atom in atoms_obj])
         C.append(atoms_obj.get_cell().tolist())
         N.append(len(atoms_obj.get_positions()))
-        S.append(atoms_obj.info['virial'].tolist())
+        S.append(atoms_obj.get_stress().tolist())
 
         # Save chunk when reaching chunk_size
         if (i + 1) % chunk_size == 0 or i == total_frames - 1:
@@ -58,7 +58,7 @@ def save_chunk(E, F, R, Z, C, N, S, raw_dir, output_path, chunk_number):
     print(f"Chunk {chunk_number} saved to {output_file}")
 
 # Example usage
-xyz_file = "test.xyz"
-output_path = "water-test"
+xyz_file = "../r2scan.extxyz"
+output_path = "r2scan"
 convert_xyz_to_custom(xyz_file, output_path)
 

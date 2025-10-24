@@ -10,8 +10,8 @@ import torch
 import re
 from collections import defaultdict
 from typing import Dict, List, Any, Tuple, Union
-from alpha_jax import process_positions_and_edges
-from alpha_jax1 import AlphaNet_flax as AlphaNet
+from utils import process_positions_and_edges
+from alphanet import AlphaNet_flax as AlphaNet
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

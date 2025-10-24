@@ -79,6 +79,8 @@ class Trainer(pl.LightningModule):
        e_loss, f_loss, s_loss = 0.0, 0.0, 0.0
        
        energy = model_outputs[0]
+       #print(energy.shape,batch_data.y.shape)
+
        e_loss = self.energy_loss(energy, batch_data.y)
        if self.config.compute_forces:
            forces = model_outputs[1]
@@ -108,6 +110,7 @@ class Trainer(pl.LightningModule):
        with torch.enable_grad():
         batch_data = batch
         batch_data.pos.requires_grad = True
+        #print(batch_data.pos.shape, batch_data.z.shape)
         if self.config.model.use_pbc:
           model_outputs =  self.model(batch_data.pos, batch_data.z, batch_data.batch, batch_data.natoms, batch_data.cell, "infer")
         else:
@@ -115,6 +118,7 @@ class Trainer(pl.LightningModule):
         e_loss, f_loss, s_loss = 0.0, 0.0, 0.0
         
         energy = model_outputs[0]
+        #print(energy.shape,batch_data.y.shape)
         e_loss = self.energy_loss(energy, batch_data.y)
         if self.config.compute_forces:
             forces = model_outputs[1]
@@ -149,13 +153,13 @@ class Trainer(pl.LightningModule):
         e_loss, f_loss, s_loss = 0.0, 0.0, 0.0
         
         energy = model_outputs[0]
-        e_loss = self.energy_loss(energy, batch_data.y)
+        e_loss = self.energy_loss(energy.squeeze(), batch_data.y)
         if self.config.compute_forces:
             forces = model_outputs[1]
             f_loss = self.force_loss(forces, batch_data.force)
         if self.config.compute_stress:
             stress = model_outputs[2]
-            s_loss = self.stress_loss(stress, reshape_stress_tensor(batch_data.stress).to(batch_data.pos.device))
+            s_loss = self.stress_loss(stress, batch_data.stress)
  
         loss = (self.config.train.energy_coef * e_loss + 
                 self.config.train.force_coef * f_loss + 

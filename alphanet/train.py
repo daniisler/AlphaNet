@@ -13,9 +13,9 @@ def run_training(config1,config2):
     energy_peratom = torch.sum(train_dataset.data.y).item()/torch.sum(train_dataset.data.natoms).item()
     config1.a = force_std
     config1.b = energy_peratom
-    print(config1.a, config1.b)    
+    #print(config1.a, config1.b)    
     model = AlphaNetWrapper(config1)
-    print(model.model.a, model.model.b)
+    #print(model.model.a, model.model.b)
     if config1.dtype == "64":
       model = model.double()
     #strategy = DDPStrategy(num_nodes=config["hardware"]["num_nodes"]) if config["hardware"]["num_nodes"] > 1 else "auto"
@@ -40,6 +40,8 @@ def run_training(config1,config2):
         gradient_clip_val=0.5,
         default_root_dir=config1.train.save_dir,
         accumulate_grad_batches=config1.accumulation_steps,
+        
+        limit_val_batches=100,
     )
     
     model = Trainer(config1, model, train_dataset, valid_dataset, test_dataset)

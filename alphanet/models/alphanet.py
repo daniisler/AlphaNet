@@ -641,9 +641,9 @@ class AlphaNet(nn.Module):
             s = (self.a[z] * s + self.b[z]).unsqueeze(1)
         else:
             raise ValueError(f"Unexpected shape of s: {s.shape}")
-       
-        s = scatter(s, batch, dim=0, reduce=self.readout).squeeze()+ V_graph
-
+        #print(s.shape, V_graph.shape, batch.shape)
+        s = scatter(s, batch, dim=0, reduce=self.readout).squeeze()#+ V_graph
+        #print(s.shape)
         if self.use_sigmoid:
             s = torch.sigmoid((s - 0.5) * 5)
         #return s, None, None

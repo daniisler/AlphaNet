@@ -2,18 +2,17 @@
 
 We present **AlphaNet**, a local frame-based equivariant model designed to tackle the challenges of achieving both accurate and efficient simulations for atomistic systems.  **AlphaNet** enhances computational efficiency and accuracy by leveraging the local geometric structures of atomic environments through the construction of equivariant local frames and learnable frame transitions. And inspired by Quantum Mechanics, AlphaNet **introduces efficient multi-body message passing by using contraction of matrix product states** rather than common 2-body message passing.  Notably, AlphaNet offers one of the best trade-offs between computational efficiency and accuracy among existing models. Moreover, AlphaNet exhibits scalability across a broad spectrum of system and dataset sizes, affirming its versatility.
 markdown
-## Update Log (v0.1.1)
+## Update Log (v0.1.2)
 
 ### Major Changes
 
-1. **Jax version to speed up**
-   - Provide **3x speedup** AlphaNet written in JAX, with a FLAX version and HaiKu version.
-   - Users can **convert the checkpoint trained in torch to our JAX model**, we are the only one providing this
+1. **Added new 2 pretrained models**
+   - Provide a pretrained model for materials: **AlphaNet-MATPES-r2scan** and our first pretrained model for catlysis: **AlphaNet-AQCAT25**, see them in the [pretrained](./pretrained) folder.
+   - Users can **convert the checkpoint trained in torch to our JAX model**
    
-2. **Added tuned Ziegler–Biersack–Littmark (ZBL) potential to stablize AlphaNet**
-   - We followed the ZBL theory, and fitted our own ZBL potential by calculated ~7,000 diatom systems.  
-   - See [ZBL](./zbl.md) in detail
-
+2. **Fixed some bugs**
+   - Support non-periodic boundary conditions in our ase calculator.
+   - Fixed errors in float64
      
 
 ## Installation Guide
@@ -69,11 +68,7 @@ In this version, you can set **"zbl" in the "model" field to true to enable ZBL 
 
 Our code is based on pytorch-lightning, and in this version we provide command line interaction, which makes AlphaNet easier to use. However if you are already familar with python and torch, which is not that hard, it would be great to use the model in a torch way and do further exploration. 
 
-⚠️ **WARNING** ⚠️ 
-
-```bash
 If you train AlphaNet in your own code， it is important to turn on the **gradient clipping**.
-```
 
 In all there are 4 commands:
 1. Train a model:
@@ -121,7 +116,7 @@ AlphaNet/
         ├── raw/
         └── processed/
 ```
-There is also an ase calculator, you can use jax in this:
+There is also an ase calculator, you can use it in jax or torch in this:
 
 ```python 
 from alphanet.infer.calc import AlphaNetCalculator
@@ -150,10 +145,11 @@ print(atoms.get_potential_energy())
    ```
    This is just for reference. JAX installation may be tricky, please get more information in [JAX](https://docs.jax.dev/en/latest/installation.html) and its github issues.
 
-   Currently I suggest **version>=0.4 <=0.4.10 or >=0.4.30 <=0.5 or >=0.6**  
+   Currently I suggest **version>=0.4 <=0.4.10 or >=0.4.30 <=0.5 or ==0.6.2**  
 
    Install flax and haiku
    ```bash
+   pip install matscipy
    pip install flax
    pip install -U dm-haiku
    ```
@@ -165,12 +161,14 @@ print(atoms.get_potential_energy())
 3. Convert a self-trained ckpt
    
    First from torch to flax:
-   
-   You can use scripts: scripts/torch2flax.py, what you need to modify is the config in it and the ckpt file.
-
+   ```bash
+   python scripts/conv_pt2flax.py #need to modify the path in it.
+   ```
    Then from flax to haiku:
 
-   We provided a very informative script for this: scripts/flax2haiku.py, which is not a direct conversion script, but provide information about how to initialize a Flax model, get the params, save the params, load the params, convert from flax params to haiku params, initialize the haiku model, preprocess the converted haiku params, and apply it to the model. Hope this is helpful! 
+   ```bash
+   python scripts/flax2haiku.py #need to modify the path in it.
+   ```
      
 4. Performance:
    
@@ -192,35 +190,15 @@ print(atoms.get_potential_energy())
 
 ## Pretrained Models
 
-The models pretrained on **OC2M** and **MPtrj** are nearly ready for release, so you won’t have to wait much longer. Additionally, we are actively planning the release of other pretrained models in the near future.
+Current pretrained models:
 
-### ​**AlphaNet-MPtrj-v1**
+For materials:
+- [AlphaNet-MPtrj-v1](pretrained/MPtrj): A model trained on the MpTrj dataset.
+- [AlphaNet-oma-v1](pretrained/OMA): A model trained on the OMAT24 dataset, and finetuned on sALEX+MPtrj.
+- [AlphaNet-MATPES-r2scan](pretrained/MATPES): A model trained on the MATPES-r2scan dataset.
 
-A new model with a small size a slight architecture change from previous one. It consists of approximately ​**4.5 million parameters**. **F1 score: 0.808**
-
-
-#### ​**Access the Model**
-
-The following resources are available in the directory:
-
-- ​**Model Configuration**: mp.json
-- ​**Model `state_dict`**: Pre-trained weights can be downloaded from [Figshare](https://ndownloader.figshare.com/files/53851133).
-
-**Path**: `pretrained_models/MPtrj`
-
-### ​**AlphaNet-oma-v1**
-
-Same size with **AlphaNet-MPtrj-v1**, trained on OMAT24, and finetuned on sALEX+MPtrj. **F1 score: 0.909**
-
-
-#### ​**Access the Model**
-
-The following resources are available in the directory:
-
-- ​**Model Configuration**: oma.json
-- ​**Model `state_dict`**: Pre-trained weights can be downloaded from [Figshare](https://ndownloader.figshare.com/files/53851139).
-
-**Path**: `pretrained_models/OMA`
+For surfaces adsorbtion and reactions:
+- [AlphaNet-AQCAT25](pretrained/AQCAT25): A model trained on the AQCAT25 dataset.
 
 ## License
 
@@ -232,7 +210,6 @@ We thank all contributors and the community for their support. Please open an is
 
 ## Citation
 [AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
-
 
 
 

@@ -1,0 +1,53 @@
+{
+  "data": {
+    "root": "dataset/",
+    "dataset_name": "MP-TRAIN",
+    "target": "energy_force",
+    "train_dataset": "r2scan-train",
+    "valid_dataset": "r2scan-val",
+    
+    "test_dataset": "r2scan-val",
+    "seed": 42
+  },
+  "model": {
+    "name": "Alphanet",
+    "num_layers": 4,
+    "num_targets": 1,
+    "output_dim": 1,
+    "compute_forces": true,
+    "compute_stress": true,
+    "use_pbc": true,
+    "has_dropout_flag": false,
+    "hidden_channels": 176,
+    "main_chi1": 96,
+    "mp_chi1": 64,
+    "chi2":  24,
+    "cutoff": 5,
+    "num_radial": 8,
+    "zbl": true
+  },
+  "train": {
+    "epochs": 200,
+    "batch_size": 16,
+    "accumulation_steps": 1,
+    "vt_batch_size": 16,
+    "lr": 0.0005,
+    "lr_decay_factor": 0.8,
+    "lr_decay_step_size": 80,
+    "weight_decay": 0,
+    "save_dir": "r2scan",
+    "log_dir": "",
+    "disable_tqdm": false,
+    "scheduler": "cosineannealinglr",
+    "norm_label": false,
+    "device": "cuda",
+    "energy_loss": "mae",
+    "force_loss": "mae",
+    "energy_metric": "mae",
+    "force_metric": "mae",
+    "energy_coef": 4.0,
+     "stress_coef": 10,
+    "force_coef": 100.0,
+    "eval_steps": 1
+  }
+}
