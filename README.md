@@ -156,7 +156,7 @@ print(atoms.get_potential_energy())
 
 2. Converted checkpoints:
    
-   See pretrained/OMA directory
+   See pretrained directory
 
 3. Convert a self-trained ckpt
    
@@ -210,6 +210,7 @@ We thank all contributors and the community for their support. Please open an is
 
 ## Citation
 [AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
+
 
 
 
