@@ -68,21 +68,21 @@ In this version, you can set **"zbl" in the "model" field to true to enable ZBL 
 
 Our code is based on pytorch-lightning, and in this version we provide command line interaction, which makes AlphaNet easier to use. However if you are already familar with python and torch, which is not that hard, it would be great to use the model in a torch way and do further exploration. 
 
-If you train AlphaNet in your own code， it is important to turn on the **gradient clipping**.
+:warning: If you train AlphaNet in your own code, it is important to turn on the gradient clipping. :warning:
 
-In all there are 4 commands:
+In all there are 3 commands:
 1. Train a model:
 
 ```bash 
 alpha-train example.json # use --help to see more functions, like multi-gpu training resuming from ckpt...
 ```
-2. Evaluate a model and draw diagonal plot:
-```bash 
-alpha-eval -c example.json -m /path/to/ckpt # use --help to see more functions
-```
-3. Convert from lightning ckpt to state_dict ckpt:
+2. Convert from lightning ckpt to state_dict ckpt:
 ```bash 
 alpha-conv -i in.ckpt -o out.ckpt # use --help to see more functions
+```
+3. Evaluate a model and draw diagonal plot:
+```bash 
+alpha-eval -c example.json -m /path/to/ckpt # use --help to see more functions
 ```
 The functions above can also be used in a script way like previous version, see `old_README`.
 
@@ -210,6 +210,7 @@ We thank all contributors and the community for their support. Please open an is
 
 ## Citation
 [AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
+
 
 
 
