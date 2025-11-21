@@ -213,7 +213,19 @@ This project is licensed under the GNU License - see the [LICENSE](LICENSE) file
 We thank all contributors and the community for their support. Please open an issue or disscusion  if there are any problems. 
 
 ## Citation
-[AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
+```bash
+@article{yin2025alphanet,
+  title={{AlphaNet}: scaling up local-frame-based neural network interatomic potentials},
+  author={Yin, Bangchen and Wang, Jiaao and Du, Weitao and Wang, Pengbo and Ying, Penghua and Jia, Haojun and Zhang, Zisheng and Du, Yuanqi and Gomes, Carla and Duan, Chenru and Henkelman, Graeme and Xiao, Hai},
+  journal={npj Computational Materials},
+  volume={11},
+  number={1},
+  pages={332},
+  year={2025},
+  publisher={Nature Portfolio}
+}
+```
+
 
 
 
