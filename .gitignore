@@ -1,0 +1,24 @@
+# --- .gitignore 内容开始 ---
+
+# 1. 忽略 LAMMPS 日志和轨迹文件
+log.lammps
+*.log
+*.lammpstrj
+
+# 2. 忽略数据结构文件
+*.data
+POSCAR
+CH4.txt
+*pt
+*.pt
+*.pkl
+# 3. 忽略大模型权重文件 (通常不建议传大文件到 git，除非你需要)
+
+# 4. 忽略 Python 编译缓存和打包文件
+__pycache__/
+*.egg-info/
+build/
+dist/
+*.zip
+lammps/
+# --- .gitignore 内容结束 ---

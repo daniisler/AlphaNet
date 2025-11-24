@@ -455,23 +455,23 @@ class AlphaNet(nn.Module):
         self.kernels_real = []
         self.kernels_imag = []
         self.zbl = config.zbl
-        if self.zbl:
-            M = 8
-            self.register_buffer('fzbl_w', torch.tensor([0.187,0.3769,0.189,0.081,0.003,0.037,0.0546,0.0715], dtype=torch.get_default_dtype()))
-            self.register_buffer('fzbl_b', torch.tensor([3.20,1.10,0.102,0.958,1.28,1.14,1.69,5], dtype=torch.get_default_dtype()))
+        
+        M = 8
+        self.register_buffer('fzbl_w', torch.tensor([0.187,0.3769,0.189,0.081,0.003,0.037,0.0546,0.0715], dtype=torch.get_default_dtype()))
+        self.register_buffer('fzbl_b', torch.tensor([3.20,1.10,0.102,0.958,1.28,1.14,1.69,5], dtype=torch.get_default_dtype()))
             # normalize weights just in case
-            with torch.no_grad():
+        with torch.no_grad():
                 w = getattr(self, 'fzbl_w')
                 w = w.clamp(min=0.0)
                 w = w / (w.sum() + 1e-12)
                 self.fzbl_w.copy_(w)
 
-            self.register_buffer('fzbl_gamma', torch.tensor(1.001, dtype=torch.get_default_dtype()))
-            self.register_buffer('fzbl_alpha', torch.tensor(0.6032, dtype=torch.get_default_dtype()))
+        self.register_buffer('fzbl_gamma', torch.tensor(1.001, dtype=torch.get_default_dtype()))
+        self.register_buffer('fzbl_alpha', torch.tensor(0.6032, dtype=torch.get_default_dtype()))
 
             # physics constants
-            self.register_buffer('fzbl_E2', torch.tensor(14.399645478425, dtype=torch.get_default_dtype()))  # eV·Å
-            self.register_buffer('fzbl_A0', torch.tensor(0.529177210903, dtype=torch.get_default_dtype()))    # Å
+        self.register_buffer('fzbl_E2', torch.tensor(14.399645478425, dtype=torch.get_default_dtype()))  # eV·Å
+        self.register_buffer('fzbl_A0', torch.tensor(0.529177210903, dtype=torch.get_default_dtype()))    # Å
 
         for _ in range(config.num_layers):
             self.message_layers.append(
@@ -642,6 +642,8 @@ class AlphaNet(nn.Module):
         else:
             raise ValueError(f"Unexpected shape of s: {s.shape}")
         #print(s.shape, V_graph.shape, batch.shape)
+        #print(s)
+        print(len(s[s<-3.16]))
         s = scatter(s, batch, dim=0, reduce=self.readout).squeeze()#+ V_graph
         #print(s.shape)
         if self.use_sigmoid:

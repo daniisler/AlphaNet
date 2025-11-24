@@ -1,0 +1,68 @@
+# ------------------------
+# 1. 初始化设置
+# ------------------------
+units       metal
+atom_style  atomic
+newton      on
+
+# ------------------------
+# 2. 建立系统结构
+# ------------------------
+boundary    p p p
+lattice     fcc 4.06
+
+# [修改 1] 将盒子改小，改为 3x3x3 的超胞 (原本是 0 10)
+# 4个原子/单胞 * 27个单胞 = 108 个原子
+region      simbox block 0 3 0 3 0 3
+create_box  1 simbox
+create_atoms 1 box
+mass        1 26.98
+
+# ------------------------
+# 3. 设置 AlphaNet 力场
+# ------------------------
+pair_style  mliap unified matpes_lammps.pt 0
+pair_coeff  * * Al
+
+# ------------------------
+# 4. 阶段一：结构优化 (Relaxation)
+# ------------------------
+neighbor    1.0 bin
+neigh_modify delay 0 every 1 check yes
+
+thermo      10
+thermo_style custom step temp pe press pxx pyy pzz lx ly lz vol
+
+# 定义 minimize 阶段的 dump
+dump        1 all custom 10 dump_min.lammpstrj id type x y z fx fy fz
+
+# 弛豫盒子，目标压力为 0，让晶格常数适应力场
+fix         1 all box/relax iso 0.0 vmax 0.001
+minimize    1.0e-6 1.0e-8 1000 10000
+
+# 取消 fix 和 dump
+unfix       1
+undump      1
+
+# ------------------------
+# 5. 阶段二：动力学模拟 (NVE)
+# ------------------------
+# 重置时间步
+reset_timestep 0
+
+timestep    0.0001
+thermo      100
+# NVE 下我们要重点关注总能量 (etotal) 是否守恒
+thermo_style custom step temp pe ke etotal press vol
+
+dump        2 all custom 100 dump_nve.lammpstrj id type x y z fx fy fz
+
+# 给定初始速度 300K
+velocity    all create 300.0 12345 dist gaussian
+
+# [修改 2] 改为 NVE 系综 (微正则系综)
+# 此时体积固定 (由 minimize 阶段确定的体积)，能量守恒，温度会波动
+fix         2 all nve
+
+# 运行 5000 步
+run         5000
