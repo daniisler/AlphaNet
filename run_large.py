@@ -154,10 +154,10 @@ _ORIGINAL_TORCH_LOAD = torch.load
 
 def hijack_load(f, *args, **kwargs):
     f_str = str(f)
-    if "alphanet_lammps.pt" in f_str:
-        if my_rank == 0: print(f"⚡ [Rank {my_rank}] Intercepting model load -> Adapter")
-        return adapter
-    return _ORIGINAL_JIT_LOAD(f, *args, **kwargs)
+    #if "alphanet_lammps.pt" in f_str:
+    if my_rank == 0: print(f"⚡ [Rank {my_rank}] Intercepting model load -> Adapter")
+    return adapter
+    #return _ORIGINAL_JIT_LOAD(f, *args, **kwargs)
 
 torch.jit.load = hijack_load
 torch.load = hijack_load
