@@ -62,6 +62,43 @@ markdown
 
    This allows you to make changes to the codebase and have them reflected without reinstalling the package.
 
+
+## 💡 Key Tips for AlphaNet Training
+
+---
+
+### 🚨 Training Settings
+
+* **Gradient Clipping:**
+    * If you train AlphaNet in your own code, it is **important to turn on gradient clipping**.
+
+* **Weight Decay:**
+    * Currently, please set **weight decay to $0$**.
+
+---
+
+### 📉 Loss Weight Adjustment Strategy
+
+The setting for loss weights depends on the **standard deviation (std) of energy per atom** in your dataset.
+
+| Data Type | Std of Energy per Atom | Recommendation | Initial Custom Settings |
+| :--- | :--- | :--- | :--- |
+| **Common (e.g., VASP)** | Below $1 \times 10^3$ (or slightly larger) | Use **default settings**. | N/A |
+| **Large Fluctuations (e.g., Gaussian, CP2K)** | Large | **Manual Adjustment** | **Energy Weight:** $0.1$ |
+| | | | **Forces Weight:** $100$ |
+
+#### **Dynamic Adjustment Workflow (For Large Std Data)**
+
+1.  **Initial Phase:** Set the Energy:Forces weight ratio to **$0.1:100$** and use a learning rate of **$1 \times 10^{-4}$**.
+2.  **Monitor:** Watch for the loss to start decreasing.
+3.  **Adjust:** Once the loss goes down, you should **manually and gradually**:
+        * Cut down the **learning rate**.
+        * Increase the weight of **energy**.
+
+> ℹ️ **Note:** We are actively working on implementing this dynamic adjustment automatically in future updates.
+
+---
+
 ## Quick Start
 
 ### Basic Usage
@@ -72,7 +109,6 @@ In this version, you can set **"zbl" in the "model" field to true to enable ZBL 
 
 Our code is based on pytorch-lightning, and in this version we provide command line interaction, which makes AlphaNet easier to use. However if you are already familar with python and torch, which is not that hard, it would be great to use the model in a torch way and do further exploration. 
 
-:warning: If you train AlphaNet in your own code, it is important to turn on the gradient clipping. :warning:
 
 In all there are 3 commands:
 1. Train a model:
@@ -225,6 +261,7 @@ We thank all contributors and the community for their support. Please open an is
   publisher={Nature Portfolio}
 }
 ```
+
 
 
 
