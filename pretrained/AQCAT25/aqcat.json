@@ -32,7 +32,7 @@
     "lr": 0.0002,
     "lr_decay_factor": 0.9,
     "lr_decay_step_size": 50000,
-    "weight_decay": 0.0001,
+    "weight_decay": 0.000,
     "save_dir": "./dac",
     "log_dir": "",
     "disable_tqdm": false,
