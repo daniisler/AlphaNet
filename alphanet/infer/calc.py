@@ -27,7 +27,8 @@ class AlphaNetCalculator(Calculator):
             **kwargs: Additional arguments for the base ASE Calculator.
         """
         Calculator.__init__(self, **kwargs)
-        
+        if precision == "64":
+            config.dtype = '64'
         # --- Model Loading ---
         if ckpt_path.endswith('ckpt'):
           self.model = AlphaNetWrapper(config).to(torch.device(device))
