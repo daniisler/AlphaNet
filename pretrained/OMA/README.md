@@ -28,6 +28,6 @@ Same size with **AlphaNet-MPtrj-v1**, trained on OMAT24, and finetuned on sALEX+
 The following resources are available in the directory:
 
 * **Model Configuration**: `oma.json`
-* **Model `state_dict`**: Pre-trained weights can be downloaded from [Figshare](https://ndownloader.figshare.com/files/53851139).
+* **Model `state_dict`**: Pre-trained weights: `alex_1212.ckpt`.
 
 **Path**: `pretrained_models/OMA`

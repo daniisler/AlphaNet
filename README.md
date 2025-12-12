@@ -6,17 +6,8 @@
 
 We present **AlphaNet**, a local frame-based equivariant model designed to tackle the challenges of achieving both accurate and efficient simulations for atomistic systems.  **AlphaNet** enhances computational efficiency and accuracy by leveraging the local geometric structures of atomic environments through the construction of equivariant local frames and learnable frame transitions. And inspired by Quantum Mechanics, AlphaNet **introduces efficient multi-body message passing by using contraction of matrix product states** rather than common 2-body message passing.  Notably, AlphaNet offers one of the best trade-offs between computational efficiency and accuracy among existing models. Moreover, AlphaNet exhibits scalability across a broad spectrum of system and dataset sizes, affirming its versatility.
 
-## Update Log (v0.1.2)
-
-### Major Changes
-
-1. **Added new 2 pretrained models**
-   - Provide a pretrained model for materials: **AlphaNet-MATPES-r2scan** and our first pretrained model for catlysis: **AlphaNet-AQCAT25**, see them in the [pretrained](./pretrained) folder.
-   - Users can **convert the checkpoint trained in torch to our JAX model**
-   
-2. **Fixed some bugs**
-   - Support non-periodic boundary conditions in our ase calculator.
-   - Fixed errors in float64
+## Update Log (scatter free version)
+A version that remove the reliance of torch-scatter, which reduce the trouble of installing torch-scatter.
      
 
 ## Installation Guide
@@ -178,43 +169,6 @@ print(atoms.get_potential_energy())
 
 ```
 
-### Using AlphaNet in JAX
-1. Installation
-   ```bash
-   pip install -U --pre jax jaxlib "jax-cuda12-plugin[with-cuda]" jax-cuda12-pjrt -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/
-   ```
-   This is just for reference. JAX installation may be tricky, please get more information in [JAX](https://docs.jax.dev/en/latest/installation.html) and its github issues.
-
-   Currently I suggest **version>=0.4 <=0.4.10 or >=0.4.30 <=0.5 or ==0.6.2**  
-
-   Install flax and haiku
-   ```bash
-   pip install matscipy
-   pip install flax
-   pip install -U dm-haiku
-   ```
-
-2. Converted checkpoints:
-   
-   See pretrained directory
-
-3. Convert a self-trained ckpt
-   
-   First from torch to flax:
-   ```bash
-   python scripts/conv_pt2flax.py #need to modify the path in it.
-   ```
-   Then from flax to haiku:
-
-   ```bash
-   python scripts/flax2haiku.py #need to modify the path in it.
-   ```
-     
-4. Performance:
-   
-   The output (energy forces stress) difference from torch model would below 0.001. I ran speed tests on a 4090 GPU, system size from 4 to 300, and get a **2.5x to 3x** speed up.
-
-   Please note jax model need to be compiled first, so the first run could take a few seconds or minutes, but would be pretty fast after that.
 
 ## Dataset Download
 
@@ -232,13 +186,9 @@ print(atoms.get_potential_energy())
 
 Current pretrained models:
 
-For materials:
-- [AlphaNet-MPtrj-v1](pretrained/MPtrj): A model trained on the MpTrj dataset.
-- [AlphaNet-oma-v1](pretrained/OMA): A model trained on the OMAT24 dataset, and finetuned on sALEX+MPtrj.
-- [AlphaNet-MATPES-r2scan](pretrained/MATPES): A model trained on the MATPES-r2scan dataset.
+Other pretrained models in the jax_and_zbl branch would be updated asap.
 
-For surfaces adsorbtion and reactions:
-- [AlphaNet-AQCAT25](pretrained/AQCAT25): A model trained on the AQCAT25 dataset.
+- [AlphaNet-oma-v1.5](pretrained/OMA)
 
 ## License
 

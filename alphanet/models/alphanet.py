@@ -1,4 +1,3 @@
-
 import math
 from math import pi
 from typing import Optional, Tuple, List, NamedTuple
@@ -8,8 +7,95 @@ from torch import nn
 from torch import Tensor
 from torch.nn import Embedding
 from torch_geometric.nn.conv import MessagePassing
-from torch_scatter import scatter, scatter_add
+# [Removed] from torch_scatter import scatter, scatter_add
 from alphanet.models.graph import GraphData
+
+# =============================================================================
+# [Added] Torch Scatter Replacement (Native PyTorch Implementation)
+# =============================================================================
+
+def scatter(src: torch.Tensor, index: torch.Tensor, dim: int = -1, 
+            out: Optional[torch.Tensor] = None, dim_size: Optional[int] = None, 
+            reduce: str = "sum") -> torch.Tensor:
+    """
+    Drop-in replacement for torch_scatter.scatter using native PyTorch functions.
+    """
+    # 1. Determine the size of the output tensor
+    if out is not None:
+        dim_size = out.size(dim)
+    else:
+        if dim_size is None:
+            dim_size = int(index.max()) + 1 if index.numel() > 0 else 0
+
+    # 2. Construct output shape
+    out_size = list(src.size())
+    out_size[dim] = dim_size
+
+    # 3. Handle broadcast of index to match src
+    # torch_scatter allows index to be 1D while src is ND.
+    # PyTorch native scatter requires index to have same number of dims as src.
+    if index.dim() != src.dim():
+        # Example: src [N, C], index [N], dim=0
+        # We need to unsqueeze index to [N, 1] and expand to [N, C]
+        # But we must be careful not to unsqueeze the 'dim' dimension itself if it matches.
+        
+        # General strategy: append singleton dimensions to the right until dims match
+        # This assumes standard GNN usage where aggregation happens on the first dimension(s)
+        # and feature dimensions are trailing.
+        expand_shape = list(src.size())
+        # We only want to expand dimensions that are NOT the scatter dimension.
+        # However, scatter_add_ requires index to exactly match src size (or be expandable to it).
+        
+        # Simplest approach for GNNs: 
+        # index is usually [N], src is [N, F]. 
+        # We make index [N, 1] then expand to [N, F].
+        curr_dims = index.dim()
+        target_dims = src.dim()
+        for _ in range(target_dims - curr_dims):
+            index = index.unsqueeze(-1)
+        
+        index = index.expand_as(src)
+
+    # 4. Map reduce strings to PyTorch native modes
+    reduce = reduce.lower()
+    # Note: 'mean' requires PyTorch >= 1.12 for scatter_reduce_
+    # 'sum' works on all versions via scatter_add_
+    
+    if reduce in ['sum', 'add']:
+        if out is None:
+            out = torch.zeros(out_size, dtype=src.dtype, device=src.device)
+        return out.scatter_add_(dim, index, src)
+    
+    # For min/max/mean, we use scatter_reduce_ (PyTorch 1.12+)
+    if reduce == 'mean':
+        mode = 'mean'
+        init_val = 0.0
+    elif reduce in ['min', 'amin']:
+        mode = 'amin'
+        init_val = float('inf')
+    elif reduce in ['max', 'amax']:
+        mode = 'amax'
+        init_val = float('-inf')
+    else:
+        raise ValueError(f"Unknown reduce mode: {reduce}")
+
+    if out is None:
+        out = torch.full(out_size, init_val, dtype=src.dtype, device=src.device)
+
+    # include_self=False simulates torch_scatter behavior (pure aggregation)
+    out.scatter_reduce_(dim, index, src, reduce=mode, include_self=False)
+    
+    # Edge case cleanup for min/max if needed (inf handling), but usually fine for GNNs.
+    # For mean, if no indices point to a bin, it remains 0 (init_val), which is correct.
+    return out
+
+def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1, 
+                out: Optional[torch.Tensor] = None, dim_size: Optional[int] = None) -> torch.Tensor:
+    return scatter(src, index, dim, out, dim_size, reduce='sum')
+
+# =============================================================================
+# End of Replacement
+# =============================================================================
 
 
 class rbf_emb(nn.Module):
@@ -338,8 +424,10 @@ class EquiMessagePassing(MessagePassing):
             dim_size: Optional[int],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         x, vec = features
+        # Modified to use the native replacement function
         x = scatter(x, index, dim=self.node_dim, dim_size=dim_size, reduce=self.reduce_mode)
-        vec = scatter(vec, index, dim=self.node_dim, dim_size=dim_size)
+        # Explicitly reduce sum for vec as default
+        vec = scatter(vec, index, dim=self.node_dim, dim_size=dim_size, reduce='sum')
         return x, vec
 
     def update(
@@ -382,7 +470,8 @@ class FTE(nn.Module):
             vec, self.hidden_channels, dim=-1
         )
 
-        scalar = torch.norm(vec1, dim=-2, p=1)
+        #scalar = torch.norm(vec1, dim=-2, p=2)
+        scalar = scalar = torch.sum(vec1**2, dim=-2)#torch.sqrt(torch.sum(vec1**2, dim=-2) + e-7)
         vec_dot = (vec1 * vec2).sum(dim=1)
         vec_dot = vec_dot * self.inv_sqrt_h
 
@@ -421,7 +510,7 @@ class AlphaNet(nn.Module):
 
         self.device = device
         self.complex_type = torch.complex64 if config.dtype == "32" else torch.complex128
-        self.eps = config.eps
+        self.eps = 1e-9#config.eps
         self.num_layers = config.num_layers
         self.hidden_channels = config.hidden_channels
         self.a = nn.Parameter(torch.ones(108) * config.a)
@@ -526,6 +615,7 @@ class AlphaNet(nn.Module):
         batch = data.batch
         z = data.z.long()
         edge_index = data.edge_index
+        
         dist = data.edge_attr
         vecs = data.edge_vec
         
@@ -542,6 +632,8 @@ class AlphaNet(nn.Module):
         i = edge_index[1]
         edge_diff = vecs
         edge_diff = edge_diff / (dist.unsqueeze(1) + self.eps)
+        
+        # Modified to use the native replacement function
         mean = scatter(pos[edge_index[0]], edge_index[1], reduce='mean', dim=0)
         
         edge_cross = torch.cross(pos[i]-mean[i], pos[j]-mean[i])
@@ -551,9 +643,10 @@ class AlphaNet(nn.Module):
         S_i_j = self.S_vector(s, edge_diff.unsqueeze(-1), edge_index, radial_hidden)
         scalrization1 = torch.sum(S_i_j[i].unsqueeze(2) * edge_frame.unsqueeze(-1), dim=1)
         scalrization2 = torch.sum(S_i_j[j].unsqueeze(2) * edge_frame.unsqueeze(-1), dim=1)
-        scalrization1[:, 1, :] = torch.abs(scalrization1[:, 1, :].clone())
-        scalrization2[:, 1, :] = torch.abs(scalrization2[:, 1, :].clone())
-
+        #scalrization1[:, 1, :] = torch.abs(scalrization1[:, 1, :].clone())
+        #scalrization2[:, 1, :] = torch.abs(scalrization2[:, 1, :].clone())
+        scalrization1[:, 1, :] = torch.square(scalrization1[:, 1, :].clone()) # 或者不处理，直接用原始值
+        scalrization2[:, 1, :] = torch.square(scalrization2[:, 1, :].clone())
         scalar3 = (self.lin(torch.permute(scalrization1, (0, 2, 1))) + 
                   torch.permute(scalrization1, (0, 2, 1))[:, :, 0].unsqueeze(2)).squeeze(-1) / math.sqrt(self.hidden_channels)
         scalar4 = (self.lin(torch.permute(scalrization2, (0, 2, 1))) + 
@@ -582,7 +675,8 @@ class AlphaNet(nn.Module):
             equation = 'ikl,bi,bl->bk'
             kerneli = torch.complex(kernel_real, kernel_imag)
             quantum = torch.einsum(equation, kerneli, s.to(self.complex_type), quantum)
-            quantum = quantum / quantum.abs().to(self.complex_type)
+            #print("DEBUG: Modified code is running! Epsilon added.")
+            quantum = quantum / (self.eps+quantum.abs().to(self.complex_type))
             
             ds, dvec = fte(s, vec)
             s = s + ds
@@ -634,6 +728,7 @@ class AlphaNet(nn.Module):
             # use torch_scatter.scatter_add (or your existing scatter) to sum per-graph
             
             graph_idx = batch[i]  # map receiver node -> graph index (E,)
+            # Modified to use the native replacement function
             V_graph = scatter_add(V_edge, graph_idx, dim=0) / 2.0 
         if s.dim() == 2:
             s = (self.a[z].unsqueeze(1) * s + self.b[z].unsqueeze(1))
@@ -642,6 +737,7 @@ class AlphaNet(nn.Module):
         else:
             raise ValueError(f"Unexpected shape of s: {s.shape}")
         #print(s.shape, V_graph.shape, batch.shape)
+        # Modified to use the native replacement function
         s = scatter(s, batch, dim=0, reduce=self.readout).squeeze()#+ V_graph
         #print(s.shape)
         if self.use_sigmoid:
@@ -698,6 +794,3 @@ class AlphaNet(nn.Module):
         
         assert force is not None, "Forces tensor should not be None"
         return stress, -force
-
-
-

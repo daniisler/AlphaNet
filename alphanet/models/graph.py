@@ -1,9 +1,61 @@
 import torch
 from torch import Tensor
 from typing import Optional, Tuple, NamedTuple, List
-from torch_scatter import  segment_coo, segment_csr
+# [Removed] from torch_scatter import segment_coo, segment_csr
 
+# =============================================================================
+# [Added] Torch Scatter Replacements (Native PyTorch Implementation)
+# =============================================================================
 
+def segment_coo(src: Tensor, index: Tensor, dim_size: int) -> Tensor:
+    """
+    Native replacement for torch_scatter.segment_coo
+    Performs scatter_add based on indices (COO format).
+    """
+    # 1. Prepare output tensor
+    out_shape = list(src.shape)
+    out_shape[0] = dim_size
+    out = torch.zeros(out_shape, dtype=src.dtype, device=src.device)
+    
+    # 2. Scatter Add
+    # Ensure index matches src dimension for broadcasting if needed, 
+    # typically src is 1D or index is 1D.
+    if src.dim() > 1 and index.dim() == 1:
+        index = index.view(-1, 1).expand_as(src)
+        
+    return out.scatter_add_(0, index, src)
+
+def segment_csr(src: Tensor, indptr: Tensor) -> Tensor:
+    """
+    Native replacement for torch_scatter.segment_csr
+    Performs segmented sum based on CSR pointers (indptr).
+    """
+    # 1. Calculate the number of segments
+    num_segments = indptr.numel() - 1
+    
+    # 2. Convert CSR indptr to COO indices (batch index)
+    # Calculate how many elements are in each segment
+    repeats = indptr[1:] - indptr[:-1]
+    
+    # Create the segment index for each element
+    # e.g., repeats=[2, 1] -> index=[0, 0, 1]
+    segment_indices = torch.repeat_interleave(
+        torch.arange(num_segments, device=src.device), repeats
+    )
+    
+    # 3. Perform Scatter Add using the generated indices
+    out_shape = list(src.shape)
+    out_shape[0] = num_segments
+    out = torch.zeros(out_shape, dtype=src.dtype, device=src.device)
+    
+    if src.dim() > 1 and segment_indices.dim() == 1:
+        segment_indices = segment_indices.view(-1, 1).expand_as(src)
+        
+    return out.scatter_add_(0, segment_indices, src)
+
+# =============================================================================
+# End of Replacements
+# =============================================================================
 
 class GraphData(NamedTuple):
     pos: Tensor
@@ -36,7 +88,10 @@ def get_max_neighbors_mask(
     # Get number of neighbors
     # segment_coo assumes sorted index
     ones = index.new_ones(1).expand_as(index)
-    num_neighbors = segment_coo(ones, index, dim_size=num_atoms)
+    
+    # [Modified] Use the native replacement function
+    num_neighbors = segment_coo(ones, index, dim_size=int(num_atoms))
+    
     max_num_neighbors = num_neighbors.max()
     num_neighbors_thresholded = num_neighbors.clamp(
         max=max_num_neighbors_threshold
@@ -47,6 +102,8 @@ def get_max_neighbors_mask(
         natoms.shape[0] + 1, device=device, dtype=torch.long
     )
     image_indptr[1:] = torch.cumsum(natoms, dim=0)
+    
+    # [Modified] Use the native replacement function
     num_neighbors_image = segment_csr(num_neighbors_thresholded, image_indptr)
 
     # If max_num_neighbors is below the threshold, return early
@@ -61,19 +118,17 @@ def get_max_neighbors_mask(
 
     # Create a tensor of size [num_atoms, max_num_neighbors] to sort the distances of the neighbors.
     # Fill with infinity so we can easily remove unused distances later.
-    #distance_sort = torch.full(
-     #   [num_atoms * max_num_neighbors], np.inf, device=device
-    #)
     distance_sort = torch.ones(
-    num_atoms * max_num_neighbors,
-    device=device
+        num_atoms * max_num_neighbors,
+        device=device
      ) * float('inf')
     distance_sort = distance_sort.to(precision)
+    
     # Create an index map to map distances from atom_distance to distance_sort
     # index_sort_map assumes index to be sorted
     index_neighbor_offset = torch.cumsum(num_neighbors, dim=0) - num_neighbors
     index_neighbor_offset_expand = torch.repeat_interleave(
-        index_neighbor_offset, num_neighbors
+        index_neighbor_offset, num_neighbors.long()
     )
     index_sort_map = (
         index * max_num_neighbors
@@ -371,26 +426,12 @@ def process_positions_and_edges(
     cutoff: float = 5.0,
     dtype: torch.dtype = torch.float32
 ) -> GraphData:
-    """
-    Process atomic positions and compute edges with optional PBC support.
-    We found that non-pbc graph is not compatible with jit compile, so we don't support that for now, please create a large cell if you want to do non-pbc calculation.
-    Args:
-        data: Input data object containing positions, batch info, and other attributes
-        compute_forces: Boolean flag for force computation
-        compute_stress: Boolean flag for stress computation
-        use_pbc: Boolean flag for periodic boundary conditions
-        cutoff: Cutoff radius for neighbor search
-        dtype: torch dtype precision
-        
-    Returns:
-        Data:  Data object containing processed attributes
-    """
+    
     precision = dtype
     pos = pos.to(precision)
     z = z.long()
     
     if compute_stress:
-        
         pos, cell, displacement = get_symmetric_displacement(
             pos, cell, num_graphs=int(torch.max(batch))+1, batch=batch
         )
@@ -400,11 +441,16 @@ def process_positions_and_edges(
     cell = check_and_reshape_cell(cell)
     
     if use_pbc and cell is not None:
-   
+        # =========================================================
+        # 1. Calculation Stage
+        # =========================================================
+        
+        # Initial graph construction
         edge_index, cell_offsets, neighbors = radius_graph_pbc(
-            pos, natoms, cell, cutoff, max_num_neighbors_threshold=50, precision = precision
+            pos, natoms, cell, cutoff, max_num_neighbors_threshold=50, precision=precision
         )
-        #print(edge_index)
+
+        # Compute distances and vectors
         out = get_pbc_distances(
             pos,
             edge_index,
@@ -412,15 +458,15 @@ def process_positions_and_edges(
             cell_offsets,
             neighbors,
             return_distance_vec=True,
-            precision = precision
+            precision=precision
         )
+        
         edge_index = out["edge_index"]
         dist = out["distances"]
         vecs = out["distance_vec"]
-    
+        
     else:
-      raise ValueError(f"None PBC is not supporting yet, as radius graph is not compilable with jit")
-    
+      raise ValueError(f"Non-PBC is not supported yet.")
     
     return GraphData(
         pos=pos,
@@ -434,7 +480,6 @@ def process_positions_and_edges(
         cell_offsets=cell_offsets,
         displacement=displacement,
     )
-
 
 def _process_positions_and_edges(
     pos: Tensor,
@@ -455,7 +500,7 @@ def _process_positions_and_edges(
     precision = dtype
     pos = pos.to(precision)
     z = z.long()
-    num_graphs = int(torch.max(batch)) + 1  # 获取图的数量
+    # num_graphs = int(torch.max(batch)) + 1 
     
     if compute_stress:
         new_pos, cell, displacement = get_symmetric_displacement(
@@ -463,6 +508,7 @@ def _process_positions_and_edges(
         )
     else:
         displacement = None
+        new_pos = pos
    
     cell = check_and_reshape_cell(cell)
     
@@ -470,9 +516,12 @@ def _process_positions_and_edges(
         edge_index, cell_offsets, neighbors = radius_graph_pbc(
             pos, natoms, cell, cutoff, max_num_neighbors_threshold=50, precision=precision
         )
-        new_pos = pos
+        # Note: If logic for ghost atoms existed here, update new_pos/new_z/new_batch/natoms accordingly.
+        # Currently keeping existing variables as per logic flow.
         new_z = z
         new_batch = batch
+        new_natoms = natoms # [FIX] Defined new_natoms to fix NameError
+
         out = get_pbc_distances(
             new_pos,
             edge_index,
@@ -486,13 +535,13 @@ def _process_positions_and_edges(
         dist = out["distances"]
         vecs = out["distance_vec"]
     else:
-        raise ValueError("None PBC is not supporting yet, as radius graph is not compilable with jit")
+        raise ValueError("Non-PBC is not supported yet, as radius graph is not compilable with jit")
     
     
     return GraphData(
         pos=new_pos,
         z=new_z,
-        natoms=new_natoms,
+        natoms=new_natoms, # [FIX] Using the fixed variable
         batch=new_batch,
         edge_index=edge_index, 
         edge_attr=dist,
