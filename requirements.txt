@@ -1,6 +1,6 @@
 --extra-index-url https://download.pytorch.org/whl/cu121
 
-
+numpy==1.26.4
 torch==2.1.2
 torch_geometric
 lightning
