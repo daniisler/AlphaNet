@@ -84,7 +84,11 @@ alpha-train example.json # use --help to see more functions, like multi-gpu trai
 ```bash 
 alpha-conv -i in.ckpt -o out.ckpt # use --help to see more functions
 ```
-3. Evaluate a model and draw diagonal plot:
+2. Finetune a converted ckpt:
+```bash 
+alpha-train example.json --finetune /path/to/your.ckpt
+```
+4. Evaluate a model and draw diagonal plot:
 ```bash 
 alpha-eval -c example.json -m /path/to/ckpt # use --help to see more functions
 ```
@@ -214,6 +218,7 @@ We thank all contributors and the community for their support. Please open an is
 
 ## Citation
 [AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
+
 
 
 
