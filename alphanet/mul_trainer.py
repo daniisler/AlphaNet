@@ -1,5 +1,5 @@
 import torch
-from torch.optim import Adam, AdamW
+from torch.optim import Adam, AdamW, RAdam
 from torch_geometric.data import DataLoader
 from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingLR
 import pytorch_lightning as pl
@@ -177,7 +177,19 @@ class Trainer(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = Adam(self.parameters(), lr=self.config.train.lr, weight_decay=self.config.train.weight_decay)
+       
+        opt_name = self.config.train.optimizer.lower()
+        lr = self.config.train.lr
+        weight_decay = self.config.train.weight_decay
+
+        if opt_name == 'adam':
+            optimizer = Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
+        elif opt_name == 'adamw':
+            optimizer = AdamW(self.parameters(), lr=lr, weight_decay=weight_decay)
+        elif opt_name == 'radam':
+            optimizer = RAdam(self.parameters(), lr=lr, weight_decay=weight_decay)
+        else:
+            raise ValueError(f"Unknown optimizer: {opt_name}")
 
         if self.config.train.scheduler == 'steplr':
             scheduler = StepLR(optimizer, step_size=self.config.train.lr_decay_step_size, gamma=self.config.train.lr_decay_factor)

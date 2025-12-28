@@ -2,7 +2,7 @@
 
 import subprocess
 import json
-import torch
+#import torch
 from typing import Literal, Dict, Optional
 from pydantic_settings import BaseSettings
 
@@ -22,6 +22,7 @@ class TrainConfig(BaseSettings):
     batch_size: int = 32
     vt_batch_size: int = 32
     lr: float = 0.0005
+    optimizer: str = "radam"
     lr_decay_factor: float = 0.5
     lr_decay_step_size: int = 150
     weight_decay: float = 0
@@ -86,7 +87,13 @@ class AlphaConfig(BaseSettings):
     has_norm_after_flag: bool = False
     reduce_mode: str = "sum"
     zbl: bool = False
-    device: torch.device = torch.device('cuda') if torch.cuda.is_available() else torch.device("cpu")
+    zbl_w: Optional[list] = [0.187,0.3769,0.189,0.081,0.003,0.037,0.0546,0.0715]
+    zbl_b: Optional[list] = [3.20,1.10,0.102,0.958,1.28,1.14,1.69,5]
+    zbl_gamma: float = 1.001
+    zbl_alpha: float = 0.6032
+    zbl_E2: float = 14.399645478425
+    zbl_A0: float = 0.529177210903
+    device: str = "cuda"
 
     
 

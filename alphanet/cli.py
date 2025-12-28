@@ -57,7 +57,8 @@ def display_config_table(main_config, runtime_config):
 @click.option("--num_devices", type=int, default=1, help="GPUs per node")
 @click.option("--resume", is_flag=True, help="Resume training from checkpoint")
 @click.option("--ckpt_path", type=click.Path(), default=None, help="Path to checkpoint file")
-def main(config, num_nodes, num_devices, resume, ckpt_path):
+@click.option("--finetune", type=click.Path(exists=True), default=None, help="Path to pretrained checkpoint for finetuning (resets optimizer)")
+def main(config, num_nodes, num_devices, resume, ckpt_path, finetune):
    
     with open(config, "r") as f:
         mconfig = json.load(f)
@@ -67,7 +68,8 @@ def main(config, num_nodes, num_devices, resume, ckpt_path):
         "num_nodes": num_nodes,
         "num_devices": num_devices,
         "resume": resume,
-        "ckpt_path": ckpt_path
+        "ckpt_path": ckpt_path,
+        "finetune_path": finetune
     }
     
     display_header()

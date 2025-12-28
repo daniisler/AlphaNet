@@ -468,7 +468,7 @@ def _process_positions_and_edges(
     
     if use_pbc and cell is not None:
         edge_index, cell_offsets, neighbors = radius_graph_pbc(
-            pos, natoms, cell, cutoff, max_num_neighbors_threshold=50, precision=precision
+            pos, natoms, cell, cutoff, max_num_neighbors_threshold=500, precision=precision
         )
         new_pos = pos
         new_z = z

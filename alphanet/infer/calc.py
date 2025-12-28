@@ -29,6 +29,8 @@ class AlphaNetCalculator(Calculator):
         Calculator.__init__(self, **kwargs)
         
         # --- Model Loading ---
+        if precision == "64":
+           config.dtype = '64'
         if ckpt_path.endswith('ckpt'):
           self.model = AlphaNetWrapper(config).to(torch.device(device))
           # Load state dict, ignoring mismatches if any
@@ -42,7 +44,7 @@ class AlphaNetCalculator(Calculator):
         self.precision = torch.float32 if precision == "32" else torch.float64
         
         if precision == "64":
-         self.model.double()
+          self.model.double()
         
         self.model.eval() # Set model to evaluation mode
         self.model.to(self.device)

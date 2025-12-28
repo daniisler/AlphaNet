@@ -24,7 +24,6 @@ class AlphaNetWrapper(torch.nn.Module):
             natoms: Tensor,
             cell: Optional[Tensor] = None,
             prefix: str = 'infer'):
-    
         processed_data = process_positions_and_edges(
             pos=pos,
             z=z,

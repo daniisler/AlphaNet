@@ -12,6 +12,8 @@ from typing import Optional, Tuple, List, NamedTuple, Any
 import math
 from functools import partial
 
+from alphanet.models.zbl_jax import zbl_interaction, get_default_zbl_params
+
 class Config:
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -496,58 +498,38 @@ class AlphaNet_hiku(hk.Module):
         s = self.last_layer(s) + self.last_layer_quantum(quantum_features) / self.config.main_chi1
         a_values = a[z]
         b_values = b[z]
-        V_graph = 0
-        if self.zbl:
-            r_e = dist
-            Z_j = z[j]
-            Z_i = z[i]
-
-            w = self.fzbl_w  # (M,)
-            b = self.fzbl_b  # (M,)
-            gamma = self.fzbl_gamma
-            alpha = self.fzbl_alpha
-            E2 = self.fzbl_E2
-            A0 = self.fzbl_A0
-
-            # compute screening length a per edge: a = gamma * 0.8854 * a0 / (Z1^alpha + Z2^alpha)
-            denom = jnp.power(Z_j, alpha) + jnp.power(Z_i, alpha)   # (E,)
-            denom = jnp.clip(denom, a_min=1e-12)
-            a_vals = gamma * 0.8854 * A0 / denom                    # (E,)
-            x = r_e / a_vals                                        # (E,)
-
-            # compute phi(x) = sum_i w_i * exp(-b_i * x)  (vectorized)
-            # exp(- x[:,None] * b[None,:]) -> (E, M)
-            exp_terms = jnp.exp(- x[:, jnp.newaxis] * b[jnp.newaxis, :])   # (E, M)
-            phi_vals = exp_terms @ w                                    # (E,)
-
-            # pair potential per edge: V_e = Z1*Z2 * E2 * phi / r
-            V_edge = (Z_j * Z_i * E2) * (phi_vals / r_e)              # (E,)
-            r_cut = 1.0  # you can make this self.fzbl_rcut buffer if you want configurable value
-
-            # compute taper coefficient: cosine cutoff (smooth)
-            # for r in [0, r_cut]: c = 0.5*(cos(pi * r / r_cut) + 1)
-            # for r >= r_cut: c = 0
-            # for safety, clamp r/r_cut in [0, 1]
-            xrc = jnp.clip(r_e / r_cut, 0.0, 1.0)   # (E,)
-            # cosine taper
-            c = 0.5 * (jnp.cos(jnp.pi * xrc) + 1.0)    # (E,)
-            # enforce zero beyond r_cut explicitly (cos already gives 0 at x=1 but clamp keeps numeric safe)
-            c = jnp.where(r_e >= r_cut, jnp.zeros_like(c), c)
-
-            # apply taper to edge potential
-            V_edge = V_edge * c
+        ml_energy = a_values[z] * s.squeeze() + b_values[z]
+        if self.config.zbl:
+            # 获取参数 (这里假设使用默认值，如果 config 有则从 config 读)
+            zbl_params = get_default_zbl_params(self.dtype)
             
-            # aggregate edge energies to graph-level using jax.ops.segment_sum
-            # Note: JAX uses segment_sum instead of scatter_add
-            graph_idx = batch[i]  # map receiver node -> graph index (E,)
-            V_graph = jax.ops.segment_sum(V_edge, graph_idx, num_segments=1) / 2.0
+            # 也可以选择将它们注册为不可训练的 hk.parameter 或者常量
+            # ...
+            
+            V_edge = zbl_interaction(
+                dist, z[i], z[j], 
+                zbl_params['w'], zbl_params['b'], 
+                zbl_params['gamma'], zbl_params['alpha'], 
+                zbl_params['E2'], zbl_params['A0']
+            )
+            
+            # 【关键】原子能量分摊
+            # i 是 target 索引
+            num_atoms = z.shape[0]
+            zbl_per_atom = jax.ops.segment_sum(V_edge, i, num_segments=num_atoms) * 0.5
+            
+            # 加到总原子能量
+            total_atom_energy = ml_energy + zbl_per_atom
+        else:
+            total_atom_energy = ml_energy
         if s.ndim == 2:
             s = a_values[:, None] * s + b_values[:, None]
         else:
             s = a_values * s + b_values
             s = s[:, None]
         
-        s = jnp.sum(s)+V_graph#jax.ops.segment_sum(s, batch, num_segments=1)+ Vgraph
-        return jnp.squeeze(s)
+        s_total = jax.ops.segment_sum(total_atom_energy, batch, num_segments=1) # 假设 batch_size=1 用于推理
+        
+        return s_total.squeeze()
         
 
