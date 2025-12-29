@@ -11,7 +11,8 @@ markdown
 ### Major Changes
 
 1. **Add lammps mliap interface**
-2. **slight change of model arch**
+2. **Slight change of model arch**
+3. **Add finetune option**
 
      
 
@@ -164,6 +165,7 @@ We thank all contributors and the community for their support. Please open an is
 
 ## Citation
 [AlphaNet: Scaling Up Local-frame-based Interatomic Potential](https://arxiv.org/abs/2501.07155)
+
 
 
 
