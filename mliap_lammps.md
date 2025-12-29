@@ -107,6 +107,25 @@ pip install cupy-cuda12x
 ## 5. Running LAMMPS
 
 Below are the commands to run LAMMPS using the KOKKOS accelerator package on GPUs.
+### Convert the checkpoint:
+```bash
+python  alphanet/create_lammps_model.py \
+    --config  ./pretrained/OMA/oma.json \
+    --checkpoint ./pretrained/OMA/alex_0410.ckpt \
+    --output ./alphanet_lammps.pt \
+    --dtype float64 \
+    --device cpu \
+
+```
+### Input file:
+
+Necessary settings:
+```bash
+units         metal
+atom_style    atomic
+newton        on
+pair_style      mliap unified your_converted.pt 0
+```
 
 ### Single GPU Execution
 
