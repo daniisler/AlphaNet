@@ -8,7 +8,7 @@ We present **AlphaNet**, a local frame-based equivariant model designed to tackl
 
 ## News(25.12.29)
 
-If you intend to use AlphaNet in LAMMPS, please switch the **lammps** branch, we are actively working on merging them into the main branch:
+If you intend to use AlphaNet in LAMMPS, please switch to the **lammps** branch, we are actively working on merging them into the main branch:
 ```bash
    git clone https://github.com/zmyybc/AlphaNet.git
    git checkout lammps 
@@ -269,6 +269,7 @@ We thank all contributors and the community for their support. Please open an is
   publisher={Nature Portfolio}
 }
 ```
+
 
 
 
