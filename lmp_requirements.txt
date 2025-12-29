@@ -1,0 +1,6 @@
+cython
+
+pytest 
+attrs
+jinja2
+urllib3
