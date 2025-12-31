@@ -93,6 +93,7 @@ Install the LAMMPS Python interface and the necessary dependencies.
 make install-python
 
 # Install dependencies for your ML model
+cd ../../
 pip install -r lmp_requirements.txt
 
 # Install CuPy (Ensure the version matches your CUDA version)
