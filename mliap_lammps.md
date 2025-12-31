@@ -15,7 +15,7 @@ This guide details the process for building LAMMPS with the Machine Learning Int
 Clone the repository and check out the specific commit hash used for this build to ensure reproducibility.
 
 ```bash
-git clone [https://github.com/lammps/lammps.git](https://github.com/lammps/lammps.git)
+git clone https://github.com/lammps/lammps.git
 cd lammps
 
 # Checkout specific commit for stability/reproducibility
