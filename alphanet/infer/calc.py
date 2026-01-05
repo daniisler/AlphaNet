@@ -70,7 +70,7 @@ class AlphaNetCalculator(Calculator):
             calc_atoms = self.atoms.copy()
             # Add 20 Å of vacuum padding around the molecule
             padding = 20.0
-            new_cell_dims = calc_atoms.get_positions().ptp(axis=0) + padding
+            new_cell_dims = np.ptp(calc_atoms.get_positions(), axis=0) + padding
             calc_atoms.set_cell(np.diag(new_cell_dims))
             calc_atoms.center()
             calc_atoms.pbc = True # Treat it as periodic now
