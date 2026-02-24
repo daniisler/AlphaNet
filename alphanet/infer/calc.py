@@ -85,7 +85,7 @@ class AlphaNetCalculator(Calculator):
             device=self.device
         )
         pos = torch.tensor(
-            calc_atoms.get_positions(), 
+            calc_atoms.get_positions(wrap=True), 
             dtype=self.precision, 
             device=self.device, 
             requires_grad=(self.config.compute_forces)  
