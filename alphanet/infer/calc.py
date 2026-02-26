@@ -80,7 +80,7 @@ class AlphaNetCalculator(Calculator):
 
         # --- Prepare Tensors for the Model ---
         z = torch.tensor(
-            [atomic_numbers[atom.symbol] for atom in calc_atoms], 
+            calc_atoms.get_atomic_numbers(), 
             dtype=torch.long, 
             device=self.device
         )
@@ -93,7 +93,7 @@ class AlphaNetCalculator(Calculator):
        
         # Cell should only be provided if the system is periodic
         cell = torch.tensor(
-            calc_atoms.get_cell(complete=True), 
+            np.array(calc_atoms.get_cell(complete=True)), 
             dtype=self.precision, 
             device=self.device
         ) if calc_atoms.pbc.any() else None
