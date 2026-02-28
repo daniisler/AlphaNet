@@ -113,8 +113,8 @@ class Evaluator:
             mask = deviation < threshold
             preds_force_filtered = preds_force[mask]
             targets_force_filtered = targets_force[mask]
-            force_mae_filtered = 0.5*torch.mean(torch.abs(preds_force_filtered - targets_force_filtered)).item()
-            force_rmse_filtered = 0.5*torch.sqrt(torch.mean((preds_force_filtered - targets_force_filtered) ** 2)).item()
+            force_mae_filtered = torch.mean(torch.abs(preds_force_filtered - targets_force_filtered)).item()
+            force_rmse_filtered = torch.sqrt(torch.mean((preds_force_filtered - targets_force_filtered) ** 2)).item()
 
             plt.scatter(
                 targets_force_filtered.cpu().numpy(),
