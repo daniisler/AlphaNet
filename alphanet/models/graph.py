@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from typing import List, NamedTuple, Optional, Tuple
 
+import numpy as np
 import torch
+from ase import Atoms
+from matscipy.neighbours import neighbour_list
 from torch import Tensor
 from torch_scatter import segment_coo, segment_csr
 
@@ -31,6 +34,100 @@ class NeighborTopology:
     cutoff: float
     skin: float
     max_num_neighbors_threshold: int
+
+
+def _to_numpy_array(data) -> np.ndarray:
+    if isinstance(data, torch.Tensor):
+        return data.detach().cpu().numpy()
+    return np.asarray(data)
+
+
+def _apply_max_neighbors_threshold_numpy(
+    num_atoms: int,
+    index_i: np.ndarray,
+    atom_distance_sqr: np.ndarray,
+    max_num_neighbors_threshold: int,
+) -> np.ndarray:
+    if (
+        max_num_neighbors_threshold <= 0
+        or index_i.size == 0
+        or num_atoms == 0
+    ):
+        return np.ones(index_i.shape[0], dtype=bool)
+
+    counts = np.bincount(index_i, minlength=num_atoms)
+    if counts.max(initial=0) <= max_num_neighbors_threshold:
+        return np.ones(index_i.shape[0], dtype=bool)
+
+    mask = np.zeros(index_i.shape[0], dtype=bool)
+    start = 0
+    for count in counts:
+        end = start + count
+        if count <= max_num_neighbors_threshold:
+            mask[start:end] = True
+        elif count > 0:
+            local_order = np.argsort(
+                atom_distance_sqr[start:end],
+                kind="stable",
+            )[:max_num_neighbors_threshold]
+            mask[start + local_order] = True
+        start = end
+    return mask
+
+
+def _build_single_image_topology_matscipy(
+    positions: np.ndarray,
+    cell: np.ndarray,
+    numbers: np.ndarray,
+    radius: float,
+    max_num_neighbors_threshold: int,
+    pbc: np.ndarray,
+    edge_source_first: bool,
+) -> Tuple[np.ndarray, np.ndarray, int]:
+    atoms = Atoms(
+        numbers=numbers,
+        positions=positions,
+        cell=cell,
+        pbc=pbc,
+    )
+    index_i, index_j, shift, distance = neighbour_list(
+        quantities="ijSd",
+        atoms=atoms,
+        cutoff=radius,
+    )
+
+    index_i = np.asarray(index_i, dtype=np.int64)
+    index_j = np.asarray(index_j, dtype=np.int64)
+    shift = np.asarray(shift, dtype=np.int32)
+    atom_distance_sqr = np.square(np.asarray(distance, dtype=np.float64))
+
+    if index_i.size == 0:
+        edge_index = np.empty((2, 0), dtype=np.int64)
+        cell_offsets = np.empty((0, 3), dtype=np.int32)
+        return edge_index, cell_offsets, 0
+
+    order = np.argsort(index_i, kind="stable")
+    index_i = index_i[order]
+    index_j = index_j[order]
+    shift = shift[order]
+    atom_distance_sqr = atom_distance_sqr[order]
+
+    mask = _apply_max_neighbors_threshold_numpy(
+        num_atoms=positions.shape[0],
+        index_i=index_i,
+        atom_distance_sqr=atom_distance_sqr,
+        max_num_neighbors_threshold=max_num_neighbors_threshold,
+    )
+    index_i = index_i[mask]
+    index_j = index_j[mask]
+    shift = shift[mask]
+
+    if edge_source_first:
+        edge_index = np.stack((index_j, index_i), axis=0)
+    else:
+        edge_index = np.stack((index_i, index_j), axis=0)
+
+    return edge_index, shift, int(index_i.shape[0])
 
 def get_max_neighbors_mask(
    natoms: Tensor,
@@ -349,21 +446,69 @@ def build_neighbor_topology(
     max_num_neighbors_threshold: int = 50,
     pbc: Optional[List[bool]] = None,
     precision: torch.dtype = torch.float32,
+    numbers: Optional[Tensor] = None,
+    edge_source_first: bool = True,
 ) -> NeighborTopology:
     cell = check_and_reshape_cell(cell)
     radius = cutoff + max(skin, 0.0)
-    edge_index, cell_offsets, neighbors = radius_graph_pbc(
-        pos=pos,
-        natoms=natoms,
-        cell=cell,
-        radius=radius,
-        max_num_neighbors_threshold=max_num_neighbors_threshold,
-        pbc=pbc,
-        precision=precision,
+    device = pos.device
+    pbc_array = np.asarray(
+        [True, True, True] if pbc is None else pbc,
+        dtype=bool,
+    )
+    natoms_np = _to_numpy_array(natoms).astype(np.int64)
+    pos_np = _to_numpy_array(pos).astype(np.float64, copy=False)
+    cell_np = _to_numpy_array(cell).astype(np.float64, copy=False)
+
+    if numbers is None:
+        numbers_np = np.ones(pos_np.shape[0], dtype=np.int32)
+    else:
+        numbers_np = _to_numpy_array(numbers).astype(np.int32, copy=False)
+
+    edge_indices = []
+    cell_offsets = []
+    num_neighbors_image = []
+
+    atom_offset = 0
+    for image_index, image_natoms in enumerate(natoms_np):
+        image_natoms = int(image_natoms)
+        image_slice = slice(atom_offset, atom_offset + image_natoms)
+        image_edge_index, image_offsets, image_neighbors = _build_single_image_topology_matscipy(
+            positions=pos_np[image_slice],
+            cell=cell_np[image_index],
+            numbers=numbers_np[image_slice],
+            radius=radius,
+            max_num_neighbors_threshold=max_num_neighbors_threshold,
+            pbc=pbc_array,
+            edge_source_first=edge_source_first,
+        )
+        if image_neighbors > 0:
+            image_edge_index = image_edge_index + atom_offset
+            edge_indices.append(torch.from_numpy(image_edge_index))
+            cell_offsets.append(torch.from_numpy(image_offsets))
+        num_neighbors_image.append(image_neighbors)
+        atom_offset += image_natoms
+
+    if edge_indices:
+        edge_index = torch.cat(edge_indices, dim=1).to(
+            device=device,
+            dtype=torch.long,
+        )
+        cell_offsets_tensor = torch.cat(cell_offsets, dim=0).to(
+            device=device,
+            dtype=torch.int32,
+        )
+    else:
+        edge_index = torch.empty((2, 0), device=device, dtype=torch.long)
+        cell_offsets_tensor = torch.empty((0, 3), device=device, dtype=torch.int32)
+    neighbors = torch.tensor(
+        num_neighbors_image,
+        device=device,
+        dtype=torch.long,
     )
     return NeighborTopology(
         edge_index=edge_index,
-        cell_offsets=cell_offsets,
+        cell_offsets=cell_offsets_tensor,
         neighbors=neighbors,
         reference_positions=pos.detach().clone(),
         reference_cell=cell.detach().clone(),
@@ -528,6 +673,7 @@ def process_positions_and_edges(
         skin=0.0,
         max_num_neighbors_threshold=50,
         precision=precision,
+        numbers=z,
     )
     return graph_from_neighbor_topology(
         pos=pos,

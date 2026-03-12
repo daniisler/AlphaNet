@@ -8,6 +8,7 @@ setup(
         'pyfiglet',
         'rich',
         'ase',
+        'matscipy==1.1.1',
         'rdkit',
         'pydantic',
         'scikit-learn',

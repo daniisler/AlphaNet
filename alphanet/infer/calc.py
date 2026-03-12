@@ -141,6 +141,7 @@ class AlphaNetCalculator(Calculator):
                 skin=self.skin,
                 max_num_neighbors_threshold=self.max_num_neighbors_threshold,
                 precision=self.precision,
+                numbers=numbers,
             )
             self._reference_positions = positions.copy()
             self._reference_cell = cell_array.copy()

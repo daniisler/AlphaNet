@@ -8,7 +8,10 @@ from pydantic_settings import BaseSettings
 
 try:
     VERSION = (
-        subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+        subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            stderr=subprocess.DEVNULL,
+        ).decode().strip()
     )
 except Exception:
     VERSION = "NA"
