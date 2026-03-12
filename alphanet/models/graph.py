@@ -1,7 +1,9 @@
+from dataclasses import dataclass
+from typing import List, NamedTuple, Optional, Tuple
+
 import torch
 from torch import Tensor
-from typing import Optional, Tuple, NamedTuple, List
-from torch_scatter import  segment_coo, segment_csr
+from torch_scatter import segment_coo, segment_csr
 
 
 
@@ -17,6 +19,18 @@ class GraphData(NamedTuple):
     cell_offsets: Tensor = None
     displacement: Optional[Tensor] = None
     pbc: Optional[Tensor] = None
+
+
+@dataclass
+class NeighborTopology:
+    edge_index: Tensor
+    cell_offsets: Tensor
+    neighbors: Tensor
+    reference_positions: Tensor
+    reference_cell: Tensor
+    cutoff: float
+    skin: float
+    max_num_neighbors_threshold: int
 
 def get_max_neighbors_mask(
    natoms: Tensor,
@@ -325,6 +339,108 @@ def get_pbc_distances(
 
     return out
 
+
+def build_neighbor_topology(
+    pos: Tensor,
+    natoms: Tensor,
+    cell: Tensor,
+    cutoff: float,
+    skin: float = 0.0,
+    max_num_neighbors_threshold: int = 50,
+    pbc: Optional[List[bool]] = None,
+    precision: torch.dtype = torch.float32,
+) -> NeighborTopology:
+    cell = check_and_reshape_cell(cell)
+    radius = cutoff + max(skin, 0.0)
+    edge_index, cell_offsets, neighbors = radius_graph_pbc(
+        pos=pos,
+        natoms=natoms,
+        cell=cell,
+        radius=radius,
+        max_num_neighbors_threshold=max_num_neighbors_threshold,
+        pbc=pbc,
+        precision=precision,
+    )
+    return NeighborTopology(
+        edge_index=edge_index,
+        cell_offsets=cell_offsets,
+        neighbors=neighbors,
+        reference_positions=pos.detach().clone(),
+        reference_cell=cell.detach().clone(),
+        cutoff=cutoff,
+        skin=max(skin, 0.0),
+        max_num_neighbors_threshold=max_num_neighbors_threshold,
+    )
+
+
+def _update_edge_geometry(
+    pos: Tensor,
+    batch: Tensor,
+    edge_index: Tensor,
+    cell: Tensor,
+    cell_offsets: Tensor,
+    precision: torch.dtype = torch.float32,
+    cutoff: Optional[float] = None,
+) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    row = edge_index[0]
+    col = edge_index[1]
+    edge_batch = batch[col]
+    cell_per_edge = cell[edge_batch]
+    offsets = (
+        cell_offsets.to(precision)
+        .view(-1, 1, 3)
+        .bmm(cell_per_edge.to(precision))
+        .view(-1, 3)
+    )
+    distance_vectors = pos[row] - pos[col] + offsets
+    distances = distance_vectors.norm(dim=-1, p=2)
+    valid_mask = distances > 0
+    if cutoff is not None:
+        valid_mask = torch.logical_and(valid_mask, distances <= cutoff)
+    edge_index = edge_index[:, valid_mask]
+    cell_offsets = cell_offsets[valid_mask]
+    distances = distances[valid_mask]
+    distance_vectors = distance_vectors[valid_mask]
+    return edge_index, cell_offsets, distances, distance_vectors
+
+
+def graph_from_neighbor_topology(
+    pos: Tensor,
+    z: Tensor,
+    natoms: Tensor,
+    batch: Tensor,
+    topology: NeighborTopology,
+    cell: Optional[Tensor] = None,
+    displacement: Optional[Tensor] = None,
+    cutoff: Optional[float] = None,
+    dtype: torch.dtype = torch.float32,
+) -> GraphData:
+    precision = dtype
+    pos = pos.to(precision)
+    z = z.long()
+    cell = check_and_reshape_cell(cell)
+    edge_index, cell_offsets, dist, vecs = _update_edge_geometry(
+        pos=pos,
+        batch=batch,
+        edge_index=topology.edge_index,
+        cell=cell,
+        cell_offsets=topology.cell_offsets,
+        precision=precision,
+        cutoff=topology.cutoff if cutoff is None else cutoff,
+    )
+    return GraphData(
+        pos=pos,
+        z=z,
+        natoms=natoms,
+        batch=batch,
+        edge_index=edge_index,
+        edge_attr=dist,
+        edge_vec=vecs,
+        cell=cell,
+        cell_offsets=cell_offsets,
+        displacement=displacement,
+    )
+
 # Borrowed from MACE
 def get_symmetric_displacement(  
         positions: torch.Tensor,
@@ -398,41 +514,31 @@ def process_positions_and_edges(
         displacement = None
    
     cell = check_and_reshape_cell(cell)
-    
-    if use_pbc and cell is not None:
-   
-        edge_index, cell_offsets, neighbors = radius_graph_pbc(
-            pos, natoms, cell, cutoff, max_num_neighbors_threshold=50, precision = precision
+
+    if not use_pbc or cell is None:
+        raise ValueError(
+            "None PBC is not supporting yet, as radius graph is not compilable with jit"
         )
-        #print(edge_index)
-        out = get_pbc_distances(
-            pos,
-            edge_index,
-            cell,
-            cell_offsets,
-            neighbors,
-            return_distance_vec=True,
-            precision = precision
-        )
-        edge_index = out["edge_index"]
-        dist = out["distances"]
-        vecs = out["distance_vec"]
-    
-    else:
-      raise ValueError(f"None PBC is not supporting yet, as radius graph is not compilable with jit")
-    
-    
-    return GraphData(
+
+    topology = build_neighbor_topology(
+        pos=pos,
+        natoms=natoms,
+        cell=cell,
+        cutoff=cutoff,
+        skin=0.0,
+        max_num_neighbors_threshold=50,
+        precision=precision,
+    )
+    return graph_from_neighbor_topology(
         pos=pos,
         z=z,
         natoms=natoms,
         batch=batch,
-        edge_index=edge_index,
-        edge_attr=dist,
-        edge_vec=vecs,
+        topology=topology,
         cell=cell,
-        cell_offsets=cell_offsets,
         displacement=displacement,
+        cutoff=cutoff,
+        dtype=precision,
     )
 
 

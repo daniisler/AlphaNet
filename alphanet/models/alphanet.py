@@ -462,7 +462,16 @@ class AlphaNet(nn.Module):
             if hasattr(layer, 'reset_parameters'):
                 layer.reset_parameters()
 
-    def forward(self, data: GraphData, prefix: str):
+    def forward(
+        self,
+        data: GraphData,
+        prefix: str,
+        compute_forces: Optional[bool] = None,
+        compute_stress: Optional[bool] = None,
+        return_atom_energy: bool = False,
+    ):
+        compute_forces = self.compute_forces if compute_forces is None else compute_forces
+        compute_stress = self.compute_stress if compute_stress is None else compute_stress
         pos = data.pos
         batch = data.batch
         z = data.z.long()
@@ -539,24 +548,33 @@ class AlphaNet(nn.Module):
         else:
             raise ValueError(f"Unexpected shape of s: {s.shape}")
 
-        s = scatter(s, batch, dim=0, reduce=self.readout).squeeze()
+        atom_energy = s.squeeze(-1) if s.dim() == 2 and s.size(-1) == 1 else s
+        total_energy = scatter(atom_energy, batch, dim=0, reduce=self.readout).squeeze()
         
         if self.use_sigmoid:
-            s = torch.sigmoid((s - 0.5) * 5)
+            if return_atom_energy:
+                raise ValueError("Per-atom energy is not defined when sigmoid readout is enabled")
+            total_energy = torch.sigmoid((total_energy - 0.5) * 5)
             
-        if self.compute_forces and self.compute_stress:
+        if compute_forces and compute_stress:
             if data.displacement is not None:
-              stress, forces = self.cal_stress_and_force(s, pos, data.displacement, data.cell, prefix)
+              stress, forces = self.cal_stress_and_force(total_energy, pos, data.displacement, data.cell, prefix)
               stress = stress.view(-1, 3)
             else:
                 stress = None
                 forces = None
-            return s, forces, stress
-        elif self.compute_forces:
-            forces = self.cal_forces(s, pos, prefix)
-            return s, forces, None
-        
-        return s, None, None
+            if return_atom_energy:
+                return total_energy, forces, stress, atom_energy
+            return total_energy, forces, stress
+        elif compute_forces:
+            forces = self.cal_forces(total_energy, pos, prefix)
+            if return_atom_energy:
+                return total_energy, forces, None, atom_energy
+            return total_energy, forces, None
+
+        if return_atom_energy:
+            return total_energy, None, None, atom_energy
+        return total_energy, None, None
     
     def cal_forces(self, energy, positions, prefix: str = 'infer'):
         graph = (prefix == "train")
