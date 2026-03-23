@@ -276,13 +276,13 @@ class EquiMessagePassing(MessagePassing):
 
         phi = torch.complex(real, imagine)
         q = phi
-        a = torch.ones(q.shape[0], 1, (self.hidden_channels_chi) // self.head, device=self.device, dtype=self.complex_type)
+        a = torch.ones(q.shape[0], 1, (self.hidden_channels_chi) // self.head, device=q.device, dtype=self.complex_type)
         kernel = (torch.complex(self.kernel_real, self.kernel_imag) / math.sqrt((self.hidden_channels) // self.head)).expand(q.shape[0], -1, -1, -1)
-        
+
         equation = 'ijl, ijlk->ik'
         conv = torch.einsum(equation, torch.cat([a, q], dim=1), kernel.to(self.complex_type))
         a = 1.0 * self.activation(self.diagonal(rbfh_ij))
-        b = a.unsqueeze(-1) * self.diachi1.unsqueeze(0).unsqueeze(0) + torch.ones(kernel.shape[0], self.chi2, self.chi1, device=self.device)
+        b = a.unsqueeze(-1) * self.diachi1.unsqueeze(0).unsqueeze(0) + torch.ones(kernel.shape[0], self.chi2, self.chi1, device=rbfh_ij.device)
         dia = self.dia(b)
         
         equation = 'ik,ikl->il'
@@ -462,7 +462,16 @@ class AlphaNet(nn.Module):
             if hasattr(layer, 'reset_parameters'):
                 layer.reset_parameters()
 
-    def forward(self, data: GraphData, prefix: str):
+    def forward(
+        self,
+        data: GraphData,
+        prefix: str,
+        compute_forces: Optional[bool] = None,
+        compute_stress: Optional[bool] = None,
+        return_atom_energy: bool = False,
+    ):
+        compute_forces = self.compute_forces if compute_forces is None else compute_forces
+        compute_stress = self.compute_stress if compute_stress is None else compute_stress
         pos = data.pos
         batch = data.batch
         z = data.z.long()
@@ -539,24 +548,33 @@ class AlphaNet(nn.Module):
         else:
             raise ValueError(f"Unexpected shape of s: {s.shape}")
 
-        s = scatter(s, batch, dim=0, reduce=self.readout).squeeze()
+        atom_energy = s.squeeze(-1) if s.dim() == 2 and s.size(-1) == 1 else s
+        total_energy = scatter(atom_energy, batch, dim=0, reduce=self.readout).squeeze()
         
         if self.use_sigmoid:
-            s = torch.sigmoid((s - 0.5) * 5)
+            if return_atom_energy:
+                raise ValueError("Per-atom energy is not defined when sigmoid readout is enabled")
+            total_energy = torch.sigmoid((total_energy - 0.5) * 5)
             
-        if self.compute_forces and self.compute_stress:
+        if compute_forces and compute_stress:
             if data.displacement is not None:
-              stress, forces = self.cal_stress_and_force(s, pos, data.displacement, data.cell, prefix)
+              stress, forces = self.cal_stress_and_force(total_energy, pos, data.displacement, data.cell, prefix)
               stress = stress.view(-1, 3)
             else:
                 stress = None
                 forces = None
-            return s, forces, stress
-        elif self.compute_forces:
-            forces = self.cal_forces(s, pos, prefix)
-            return s, forces, None
-        
-        return s, None, None
+            if return_atom_energy:
+                return total_energy, forces, stress, atom_energy
+            return total_energy, forces, stress
+        elif compute_forces:
+            forces = self.cal_forces(total_energy, pos, prefix)
+            if return_atom_energy:
+                return total_energy, forces, None, atom_energy
+            return total_energy, forces, None
+
+        if return_atom_energy:
+            return total_energy, None, None, atom_energy
+        return total_energy, None, None
     
     def cal_forces(self, energy, positions, prefix: str = 'infer'):
         graph = (prefix == "train")
