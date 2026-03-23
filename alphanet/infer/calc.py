@@ -23,7 +23,6 @@ class AlphaNetCalculator(Calculator):
         precision='32',
         reuse_neighbors=True,
         skin=0.5,
-        max_num_neighbors_threshold=50,
         **kwargs,
     ):
         """
@@ -34,6 +33,8 @@ class AlphaNetCalculator(Calculator):
             config (object): Model configuration object.
             device (str): Device to run the model on ('cpu' or 'cuda').
             precision (str): Precision for calculations ('32' for float, '64' for double).
+            reuse_neighbors (bool): Whether to cache and reuse the neighbor list.
+            skin (float): Skin distance (Angstrom) for neighbor list caching.
             **kwargs: Additional arguments for the base ASE Calculator.
         """
         Calculator.__init__(self, **kwargs)
@@ -62,7 +63,6 @@ class AlphaNetCalculator(Calculator):
         self.reuse_neighbors = reuse_neighbors
         self.supports_neighbor_cache = hasattr(self.model, "forward_graph")
         self.skin = max(float(skin), 0.0)
-        self.max_num_neighbors_threshold = max_num_neighbors_threshold
         self._neighbor_topology = None
         self._reference_positions = None
         self._reference_cell = None
@@ -139,7 +139,6 @@ class AlphaNetCalculator(Calculator):
                 cell=torch.tensor(cell_array, dtype=self.precision, device=self.device).detach(),
                 cutoff=self.config.cutoff,
                 skin=self.skin,
-                max_num_neighbors_threshold=self.max_num_neighbors_threshold,
                 precision=self.precision,
                 numbers=numbers,
             )
