@@ -123,7 +123,7 @@ class CustomPickleDataset(InMemoryDataset):
 
     #def get_idx_split(self, data_size, train_size=None, valid_size=None, seed=None):
     def get_idx_split(self, data_size, train_size=None, valid_size=None, test_size=None, seed=None):
-      ids = shuffle(list(range(data_size)))
+      ids = shuffle(list(range(data_size)), random_state=seed)
       if train_size is not None and valid_size is None:
           train_idx = ids[:train_size]
           
