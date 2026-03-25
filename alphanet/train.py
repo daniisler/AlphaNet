@@ -5,6 +5,8 @@ from alphanet.data import get_pic_datasets
 from alphanet.models.model import AlphaNetWrapper
 from alphanet.mul_trainer import Trainer
 
+torch.set_float32_matmul_precision('high')
+
 def run_training(config1, runtime_config):
 
     train_dataset, valid_dataset, test_dataset = get_pic_datasets(
