@@ -1,3 +1,13 @@
+"""
+AlphaNet Training Module
+
+This module contains the core training logic for AlphaNet models, supporting:
+- Single GPU / Multi-GPU training
+- Resume training from checkpoints
+- Finetuning pretrained models
+- Automatic normalization parameter computation
+"""
+
 import torch
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -5,7 +15,23 @@ from alphanet.data import get_pic_datasets
 from alphanet.models.model import AlphaNetWrapper
 from alphanet.mul_trainer import Trainer
 
+
 def run_training(config1, runtime_config):
+    """
+    Run AlphaNet model training.
+    
+    Args:
+        config1: All_Config object containing data, model, and training configurations
+        runtime_config: dict with runtime settings (num_devices, resume, etc.)
+    
+    Functionality:
+        1. Load and preprocess datasets
+        2. Auto-compute force std and energy per atom for normalization
+        3. Initialize model
+        4. Support checkpoint resume or finetuning
+        5. Configure PyTorch Lightning trainer
+        6. Start training
+    """
 
     train_dataset, valid_dataset, test_dataset = get_pic_datasets(
         root='dataset/', 

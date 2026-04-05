@@ -1,0 +1,46 @@
+{
+  "_comment": "AlphaNet advanced training configuration with ZBL potential",
+  "data": {
+    "dataset_name": "my_material",
+    "root": "dataset/",
+    "target": "U0",
+    "train_size": null,
+    "valid_size": null,
+    "test_size": null,
+    "seed": 42
+  },
+  "model": {
+    "name": "Alphanet",
+    "num_layers": 4,
+    "hidden_channels": 256,
+    "cutoff": 6.0,
+    "num_radial": 128,
+    "head": 32,
+    "compute_forces": true,
+    "compute_stress": true,
+    "use_pbc": true,
+    "dtype": "64",
+    "zbl": true,
+    "zbl_w": [0.187, 0.3769, 0.189, 0.081, 0.003, 0.037, 0.0546, 0.0715],
+    "zbl_b": [3.20, 1.10, 0.102, 0.958, 1.28, 1.14, 1.69, 5],
+    "zbl_gamma": 1.001,
+    "zbl_alpha": 0.6032
+  },
+  "train": {
+    "epochs": 2000,
+    "batch_size": 16,
+    "lr": 0.0003,
+    "optimizer": "radam",
+    "lr_decay_factor": 0.5,
+    "lr_decay_step_size": 200,
+    "weight_decay": 0.0001,
+    "energy_coef": 4.0,
+    "force_coef": 100.0,
+    "stress_coef": 100.0,
+    "scheduler": "steplr",
+    "device": "cuda",
+    "num_workers": 4,
+    "save_dir": "./checkpoints",
+    "log_dir": "./logs"
+  }
+}

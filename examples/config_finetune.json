@@ -1,0 +1,33 @@
+{
+  "_comment": "AlphaNet finetuning configuration example",
+  "data": {
+    "dataset_name": "fine_tune_dataset",
+    "root": "dataset/",
+    "target": "U0",
+    "train_size": null,
+    "valid_size": null,
+    "seed": 42
+  },
+  "model": {
+    "name": "Alphanet",
+    "num_layers": 3,
+    "hidden_channels": 128,
+    "cutoff": 5.0,
+    "compute_forces": true,
+    "compute_stress": false,
+    "use_pbc": true,
+    "zbl": false,
+    "dtype": "32"
+  },
+  "train": {
+    "epochs": 500,
+    "batch_size": 16,
+    "lr": 0.0001,
+    "optimizer": "radam",
+    "energy_coef": 1.0,
+    "force_coef": 100.0,
+    "device": "cuda",
+    "save_dir": "./finetune_checkpoints",
+    "log_dir": "./finetune_logs"
+  }
+}
