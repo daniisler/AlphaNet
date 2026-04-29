@@ -224,17 +224,12 @@ print(atoms.get_potential_energy())
 
    Please note jax model need to be compiled first, so the first run could take a few seconds or minutes, but would be pretty fast after that.
 
-## Dataset Download
+## Self-made dataset
 
-[The Defected Bilayer Graphene Dataset](https://zenodo.org/records/10374206)
 
-[The Formate Decomposition on Cu Dataset](https://archive.materialscloud.org/record/2022.45)
 
 [The Zeolite Dataset](https://doi.org/10.6084/m9.figshare.27800211)
 
-[The OC dataset](https://opencatalystproject.org/)
-
-[The MPtrj dataset](https://matbench-discovery.materialsproject.org/data)
 
 ## Pretrained Models
 
