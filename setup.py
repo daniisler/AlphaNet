@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='alphanet',
+    name='alfanet',
     version="0.1.2",
     packages=find_packages(include=['alphanet', 'alphanet.*']),
     install_requires=[
@@ -12,7 +12,7 @@ setup(
         'pydantic',
         'scikit-learn',
         'pydantic_settings'
-        
+
     ],
     entry_points={
         "console_scripts": [

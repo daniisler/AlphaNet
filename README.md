@@ -11,7 +11,7 @@ We present **AlphaNet**, a local frame-based equivariant model designed to tackl
 If you intend to use AlphaNet in LAMMPS, please switch to the **lammps** branch, we are actively working on merging them into the main branch:
 ```bash
    git clone https://github.com/zmyybc/AlphaNet.git
-   git checkout lammps 
+   git checkout lammps
    ```
 
 ## Update Log (v0.1.2)
@@ -21,13 +21,19 @@ If you intend to use AlphaNet in LAMMPS, please switch to the **lammps** branch,
 1. **Added new 2 pretrained models**
    - Provide a pretrained model for materials: **AlphaNet-MATPES-r2scan** and our first pretrained model for catlysis: **AlphaNet-AQCAT25**, see them in the [pretrained](./pretrained) folder.
    - Users can **convert the checkpoint trained in torch to our JAX model**
-   
+
 2. **Fixed some bugs**
    - Support non-periodic boundary conditions in our ase calculator.
    - Fixed errors in float64
-     
+
 
 ## Installation Guide
+
+Unfortunately, the name `alphanet` is already taken by a package on PyPI, so we have to rename the package to `alfanet` to avoid conflicts.
+
+```bash
+pip install alfanet
+```
 
 ### Installation Steps
 
@@ -111,25 +117,25 @@ The setting for loss weights depends on the **standard deviation (std) of energy
 
 ### Basic Usage
 
-The settings are put into a config file, you can see the json files provided as example, or see comments in `alphanet/config.py` for some help. 
+The settings are put into a config file, you can see the json files provided as example, or see comments in `alphanet/config.py` for some help.
 
 In this version, you can set **"zbl" in the "model" field to true to enable ZBL potential**.
 
-Our code is based on pytorch-lightning, and in this version we provide command line interaction, which makes AlphaNet easier to use. However if you are already familar with python and torch, which is not that hard, it would be great to use the model in a torch way and do further exploration. 
+Our code is based on pytorch-lightning, and in this version we provide command line interaction, which makes AlphaNet easier to use. However if you are already familar with python and torch, which is not that hard, it would be great to use the model in a torch way and do further exploration.
 
 
 In all there are 3 commands:
 1. Train a model:
 
-```bash 
+```bash
 alpha-train example.json # use --help to see more functions, like multi-gpu training resuming from ckpt...
 ```
 2. Convert from lightning ckpt to state_dict ckpt:
-```bash 
+```bash
 alpha-conv -i in.ckpt -o out.ckpt # use --help to see more functions
 ```
 3. Evaluate a model and draw diagonal plot:
-```bash 
+```bash
 alpha-eval -c example.json -m /path/to/ckpt # use --help to see more functions
 ```
 The functions above can also be used in a script way like previous version, see `old_README`.
@@ -139,13 +145,13 @@ To prepare the training dataset in format of pickle, you can use:
 
 1. from deepmd:
 
-```bash 
+```bash
 python scripts/dp2pic_batch.py
 ```
 
 2. from extxyz:
 
-```bash 
+```bash
 python scripts/xyz2pic.py
 ```
 
@@ -166,7 +172,7 @@ AlphaNet/
 ```
 There is also an ase calculator, you can use it in jax or torch in this:
 
-```python 
+```python
 from alphanet.infer.calc import AlphaNetCalculator
 from alphanet.infer.new_haiku import AlphaNetCalculator #JAX version
 from alphanet.config import All_Config
@@ -193,7 +199,7 @@ print(atoms.get_potential_energy())
    ```
    This is just for reference. JAX installation may be tricky, please get more information in [JAX](https://docs.jax.dev/en/latest/installation.html) and its github issues.
 
-   Currently I suggest **version>=0.4 <=0.4.10 or >=0.4.30 <=0.5 or ==0.6.2**  
+   Currently I suggest **version>=0.4 <=0.4.10 or >=0.4.30 <=0.5 or ==0.6.2**
 
    Install flax and haiku
    ```bash
@@ -203,11 +209,11 @@ print(atoms.get_potential_energy())
    ```
 
 2. Converted checkpoints:
-   
+
    See pretrained directory
 
 3. Convert a self-trained ckpt
-   
+
    First from torch to flax:
    ```bash
    python scripts/conv_pt2flax.py #need to modify the path in it.
@@ -217,9 +223,9 @@ print(atoms.get_potential_energy())
    ```bash
    python scripts/flax2haiku.py #need to modify the path in it.
    ```
-     
+
 4. Performance:
-   
+
    The output (energy forces stress) difference from torch model would below 0.001. I ran speed tests on a 4090 GPU, system size from 4 to 300, and get a **2.5x to 3x** speed up.
 
    Please note jax model need to be compiled first, so the first run could take a few seconds or minutes, but would be pretty fast after that.
@@ -249,7 +255,7 @@ This project is licensed under the GNU License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-We thank all contributors and the community for their support. Please open an issue or disscusion  if there are any problems. 
+We thank all contributors and the community for their support. Please open an issue or disscusion  if there are any problems.
 
 ## Citation
 ```bash
