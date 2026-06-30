@@ -1,0 +1,41 @@
+[build-system]
+requires = ["uv_build >= 0.10.10, <0.12.0"]
+build-backend = "uv_build"
+
+[project]
+name = "msc-alphanet"
+version = "0.1.2"
+description = "AlphaNet: A Local Frame-based Atomistic Potential"
+readme = "README.md"
+requires-python = ">=3.8"
+
+dependencies = [
+    "numpy==1.26.4",
+    "torch==2.4.1",
+    "torch_geometric",
+    "torch_scatter",
+    "lightning",
+    "tensorboard",
+    "pyfiglet",
+    "rich",
+    "ase",
+    "rdkit",
+    "pydantic",
+    "scikit-learn",
+    "pydantic_settings"
+]
+
+[tool.uv]
+index-strategy = "unsafe-best-match"
+extra-index-url = ["https://download.pytorch.org/whl/cu121"]
+find-links = ["https://data.pyg.org/whl/torch-2.4.1+cu121.html"]
+
+[tool.uv.build-backend]
+module-name = "alphanet"
+module-root = ""
+
+[tool.uv_build]
+include = ["alphanet/**/*.pyi", "alphanet/py.typed", "alphanet/pretrained/**/*.json"]
+
+[project.urls]
+Repository = "https://github.com/daniisler/AlphaNet/tree/feature-python-package"

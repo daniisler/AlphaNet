@@ -1,0 +1,14 @@
+È±Ê§ 12 ¸ö²ÎÊý:
+--------------------------------------------------------------------------------
+model.message_layers.0.unitary
+model.message_layers.0.fc_dx.weight
+model.message_layers.0.fc_dx.bias
+model.message_layers.1.unitary
+model.message_layers.1.fc_dx.weight
+model.message_layers.1.fc_dx.bias
+model.message_layers.2.unitary
+model.message_layers.2.fc_dx.weight
+model.message_layers.2.fc_dx.bias
+model.message_layers.3.unitary
+model.message_layers.3.fc_dx.weight
+model.message_layers.3.fc_dx.bias

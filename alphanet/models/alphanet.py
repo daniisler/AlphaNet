@@ -59,7 +59,7 @@ class rbf_emb(nn.Module):
         numerator = torch.sin(self.bessel_weights * x.unsqueeze(-1) / self.r_max)
 
         return self.prefactor * (numerator / x.unsqueeze(-1))
-        
+
 class _rbf_emb(nn.Module):
     '''
     modified: delete cutoff with r
@@ -103,7 +103,7 @@ class NeighborEmb(MessagePassing):
         'x': Tensor,
         'norm': Tensor
     }
-    
+
     def __init__(self, hid_dim: int):
         super(NeighborEmb, self).__init__(aggr='add')
         self.embedding = nn.Embedding(95, hid_dim)
@@ -131,7 +131,7 @@ class S_vector(MessagePassing):
         'x': Tensor,
         'norm': Tensor
     }
-    
+
     def __init__(self, hid_dim: int):
         super(S_vector, self).__init__(aggr='add')
         self.hid_dim = hid_dim
@@ -225,11 +225,11 @@ class EquiMessagePassing(MessagePassing):
 
         self.kernel_real = torch.nn.Parameter(torch.randn((self.head + 1, (self.hidden_channels_chi) // self.head, self.chi2)))
         self.kernel_imag = torch.nn.Parameter(torch.randn((self.head + 1, (self.hidden_channels_chi) // self.head, self.chi2)))
-        
+
         self.fc_mps = nn.Linear(self.chi1, self.chi1)#.to(torch.cfloat)
         self.fc_dx = nn.Linear(self.chi1, hidden_channels)#.to(torch.cfloat)
         self.dia = nn.Linear(self.chi1, self.chi1)#.to(torch.cfloat)
-      
+
         self.unitary = torch.nn.Parameter(torch.randn((self.chi1, self.chi1), device=self.device))
         self.activation = nn.SiLU()
 
@@ -247,7 +247,7 @@ class EquiMessagePassing(MessagePassing):
         nn.init.xavier_uniform_(self.rbf_proj.weight)
         self.rbf_proj.bias.data.fill_(0)
         self.x_layernorm.reset_parameters()
-        
+
 
         nn.init.xavier_uniform_(self.dir_proj[0].weight)
         self.dir_proj[0].bias.data.fill_(0)
@@ -295,13 +295,13 @@ class EquiMessagePassing(MessagePassing):
         dx = self.scale2(dx)
 
         dx = torch.complex(torch.cos(dx), torch.sin(dx))
-        
+
         return dx, dy, dvec
 
     def message(self, xh_j, vec_j, rbfh_ij, r_ij):
         x, xh2, xh3 = torch.split(xh_j * rbfh_ij, self.hidden_channels, dim=-1)
         xh2 = xh2 * self.inv_sqrt_3
-        
+
         real, imagine = torch.split(self.scale(x), self.hidden_channels_chi, dim=-1)
         real = real.reshape(x.shape[0], self.head, (self.hidden_channels_chi) // self.head)
         imagine = imagine.reshape(x.shape[0], self.head, (self.hidden_channels_chi) // self.head)
@@ -361,7 +361,7 @@ class FTE(nn.Module):
             nn.Linear(hidden_channels * 2, hidden_channels),
             nn.SiLU(),
             nn.Linear(hidden_channels, hidden_channels * 3)
-         
+
         )
 
         self.inv_sqrt_2 = 1 / math.sqrt(2.0)
@@ -415,7 +415,7 @@ class aggregate_pos(MessagePassing):
 
 
 class AlphaNet(nn.Module):
-    
+
     def __init__(self, config, device=torch.device('cuda') if torch.cuda.is_available() else torch.device("cpu")):
         super(AlphaNet, self).__init__()
 
@@ -429,7 +429,7 @@ class AlphaNet(nn.Module):
         self.cutoff = config.cutoff
         self.readout = config.readout
         self.chi1 = config.main_chi1
-        
+
         self.use_sigmoid = config.use_sigmoid
         self.num_targets = config.output_dim if config.output_dim != 0 else 1
         self.compute_forces = config.compute_forces
@@ -442,14 +442,14 @@ class AlphaNet(nn.Module):
             nn.Linear(config.num_radial, config.hidden_channels),
             nn.SiLU(inplace=True),
             nn.Linear(config.hidden_channels, config.hidden_channels))
-        self.pi = pi 
+        self.pi = pi
         self.neighbor_emb = NeighborEmb(config.hidden_channels)
         self.S_vector = S_vector(config.hidden_channels)
         self.lin = nn.Sequential(
             nn.Linear(3, config.hidden_channels // 4),
             nn.SiLU(inplace=True),
             nn.Linear(config.hidden_channels // 4, 1))
-        
+
         self.message_layers = nn.ModuleList()
         self.FTEs = nn.ModuleList()
         self.kernels_real = []
@@ -491,17 +491,17 @@ class AlphaNet(nn.Module):
                 )
             )
             self.FTEs.append(FTE(config.hidden_channels))
-            
+
             kernel_real = torch.randn((config.hidden_channels, self.chi1, self.chi1))
             kernel_imag = torch.randn((config.hidden_channels, self.chi1, self.chi1))
             self.kernels_real.append(kernel_real)
             self.kernels_imag.append(kernel_imag)
-            
+
         self.kernels_real = torch.nn.Parameter(torch.stack(self.kernels_real))
         self.kernels_imag = torch.nn.Parameter(torch.stack(self.kernels_imag))
         self.last_layer = nn.Linear(config.hidden_channels, self.num_targets)
         self.last_layer_quantum = nn.Linear(self.chi1 * 2, self.num_targets)
-        
+
         self.inv_sqrt_2 = 1 / math.sqrt(2.0)
         self.reset_parameters()
 
@@ -512,7 +512,7 @@ class AlphaNet(nn.Module):
         for layer in self.FTEs:
             layer.reset_parameters()
         self.last_layer.reset_parameters()
-        
+
         for layer in self.radial_lin:
             if hasattr(layer, 'reset_parameters'):
                 layer.reset_parameters()
@@ -521,14 +521,14 @@ class AlphaNet(nn.Module):
                 layer.reset_parameters()
 
     def forward(self, data: GraphData, prefix: str):
-      
+
         pos = data.pos
         batch = data.batch
         z = data.z.long()
         edge_index = data.edge_index
         dist = data.edge_attr
         vecs = data.edge_vec
-        
+
         z_emb = self.z_emb_ln(self.z_emb(z))
         radial_emb = self.radial_emb(dist)
         radial_hidden = self.radial_lin(radial_emb)
@@ -537,15 +537,15 @@ class AlphaNet(nn.Module):
 
         s = self.neighbor_emb(z, z_emb, edge_index, radial_hidden)
         vec = torch.zeros(s.size(0), 3, s.size(1), device=s.device)
-        
+
         j = edge_index[0]
         i = edge_index[1]
         edge_diff = vecs
         edge_diff = edge_diff / (dist.unsqueeze(1) + self.eps)
         mean = scatter(pos[edge_index[0]], edge_index[1], reduce='mean', dim=0)
-        
-        edge_cross = torch.cross(pos[i]-mean[i], pos[j]-mean[i])
-        edge_vertical = torch.cross(edge_diff, edge_cross)
+
+        edge_cross = torch.cross(pos[i]-mean[i], pos[j]-mean[i], dim=-1)
+        edge_vertical = torch.cross(edge_diff, edge_cross, dim=-1)
         edge_frame = torch.cat((edge_diff.unsqueeze(-1), edge_cross.unsqueeze(-1), edge_vertical.unsqueeze(-1)), dim=-1)
 
         S_i_j = self.S_vector(s, edge_diff.unsqueeze(-1), edge_index, radial_hidden)
@@ -554,14 +554,14 @@ class AlphaNet(nn.Module):
         scalrization1[:, 1, :] = torch.abs(scalrization1[:, 1, :].clone())
         scalrization2[:, 1, :] = torch.abs(scalrization2[:, 1, :].clone())
 
-        scalar3 = (self.lin(torch.permute(scalrization1, (0, 2, 1))) + 
+        scalar3 = (self.lin(torch.permute(scalrization1, (0, 2, 1))) +
                   torch.permute(scalrization1, (0, 2, 1))[:, :, 0].unsqueeze(2)).squeeze(-1) / math.sqrt(self.hidden_channels)
-        scalar4 = (self.lin(torch.permute(scalrization2, (0, 2, 1))) + 
+        scalar4 = (self.lin(torch.permute(scalrization2, (0, 2, 1))) +
                   torch.permute(scalrization2, (0, 2, 1))[:, :, 0].unsqueeze(2)).squeeze(-1) / math.sqrt(self.hidden_channels)
-        
+
         edge_weight = torch.cat((scalar3, scalar4), dim=-1) * rbounds.unsqueeze(-1)
         edge_weight = torch.cat((edge_weight, radial_hidden, radial_emb), dim=-1)
-        
+
         equation = 'ik,bi->bk'
         quantum = torch.einsum(equation, self.kernel1, z_emb)
         real, imagine = torch.split(quantum, self.chi1, dim=-1)
@@ -573,17 +573,17 @@ class AlphaNet(nn.Module):
                 rope, ds, dvec = message_layer(s, vec, edge_index, radial_emb, edge_weight, edge_diff, None)
             else:
                 rope, ds, dvec = message_layer(s, vec, edge_index, radial_emb, edge_weight, edge_diff, rope)
-            
+
             s = s + ds
             vec = vec + dvec
-            
+
             kernel_real = self.kernels_real[id]
             kernel_imag = self.kernels_imag[id]
             equation = 'ikl,bi,bl->bk'
             kerneli = torch.complex(kernel_real, kernel_imag)
             quantum = torch.einsum(equation, kerneli, s.to(self.complex_type), quantum)
             quantum = quantum / quantum.abs().to(self.complex_type)
-            
+
             ds, dvec = fte(s, vec)
             s = s + ds
             vec = vec + dvec
@@ -632,9 +632,9 @@ class AlphaNet(nn.Module):
             V_edge = V_edge * c
             # aggregate edge energies to graph-level (use receiver node's batch index)
             # use torch_scatter.scatter_add (or your existing scatter) to sum per-graph
-            
+
             graph_idx = batch[i]  # map receiver node -> graph index (E,)
-            V_graph = scatter_add(V_edge, graph_idx, dim=0) / 2.0 
+            V_graph = scatter_add(V_edge, graph_idx, dim=0) / 2.0
         if s.dim() == 2:
             s = (self.a[z].unsqueeze(1) * s + self.b[z].unsqueeze(1))
         elif s.dim() == 1:
@@ -648,7 +648,7 @@ class AlphaNet(nn.Module):
             s = torch.sigmoid((s - 0.5) * 5)
         #return s, None, None
         if self.compute_forces and self.compute_stress:
-            
+
             if data.displacement is not None:
               stress, forces = self.cal_stress_and_force(s, pos, data.displacement, data.cell, prefix)
               stress = stress.view(-1, 3)
@@ -660,9 +660,9 @@ class AlphaNet(nn.Module):
             forces = self.cal_forces(s, pos, prefix)
             return s, forces, None
         return s, None, None
-    
+
     def cal_forces(self, energy, positions, prefix: str = 'infer'):
- 
+
         graph = (prefix == "train")
         grad_outputs = torch.jit.annotate(List[Optional[torch.Tensor]], [torch.ones_like(energy)])
         forces = torch.autograd.grad(
@@ -675,10 +675,10 @@ class AlphaNet(nn.Module):
         )[0]
         assert forces is not None, "Gradient should not be None"
         return -forces
-    
+
     def cal_stress_and_force(self, energy: Tensor,positions: Tensor, displacement: Optional[Tensor], cell: Tensor, prefix: str) -> Tuple[Tensor, Tensor]:
         if displacement is None:
-         raise ValueError("displacement cannot be None for stress calculation")      
+         raise ValueError("displacement cannot be None for stress calculation")
         graph = (prefix == "train")
         grad_outputs = torch.jit.annotate(List[Optional[torch.Tensor]], [torch.ones_like(energy)])
         output = torch.autograd.grad(
@@ -689,13 +689,13 @@ class AlphaNet(nn.Module):
             retain_graph=graph,
             allow_unused=True
         )
-        virial = output[0] if output[0] is not None else torch.zeros((3, 3), device=cell.device) 
+        virial = output[0] if output[0] is not None else torch.zeros((3, 3), device=cell.device)
         assert virial is not None, "Virial tensor should not be None"
         volume = torch.abs(torch.linalg.det(cell))
         volume_expanded = volume.reshape(-1, 1, 1)
         stress = virial / volume_expanded
         force =output[1]
-        
+
         assert force is not None, "Forces tensor should not be None"
         return stress, -force
 
