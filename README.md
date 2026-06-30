@@ -29,10 +29,10 @@ If you intend to use AlphaNet in LAMMPS, please switch to the **lammps** branch,
 
 ## Installation Guide
 
-Unfortunately, the name `alphanet` is already taken by a package on PyPI, so we have to rename the package to `alfanet` to avoid conflicts.
+Unfortunately, the name `alphanet` is already taken by a package on PyPI, so we have to rename the package to `msc-alphanet` to avoid conflicts.
 
 ```bash
-pip install alfanet
+pip install msc-alphanet
 ```
 
 ### Installation Steps
